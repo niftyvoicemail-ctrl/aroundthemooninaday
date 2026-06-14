@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Around the Moon in a Day</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0a0a0a;
+    color: #ddd;
+    font-family: Georgia, 'Times New Roman', serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+  }
+  .card { width: 100%; max-width: 460px; }
+  .eyebrow {
+    font-family: 'Courier New', monospace;
+    font-size: .7rem;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: #666;
+    margin-bottom: 10px;
+  }
+  h1 {
+    font-size: 1.9rem;
+    font-weight: normal;
+    color: #eee;
+    line-height: 1.2;
+    margin-bottom: 8px;
+  }
+  .author {
+    font-family: 'Courier New', monospace;
+    font-size: .72rem;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: #555;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #1e1e1e;
+  }
+  .desc {
+    font-size: .9rem;
+    color: #666;
+    line-height: 1.6;
+    margin-bottom: 32px;
+  }
+  .label {
+    font-family: 'Courier New', monospace;
+    font-size: .7rem;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: #555;
+    margin-bottom: 12px;
+  }
+  .prices {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+    margin-bottom: 14px;
+  }
+  .prices a {
+    flex: 1;
+    display: block;
+    padding: 16px 0;
+    text-align: center;
+    background: #111;
+    border: 1px solid #2a2a2a;
+    color: #eee;
+    font-family: Georgia, serif;
+    font-size: 1rem;
+    text-decoration: none;
+    transition: background .15s, border-color .15s;
+  }
+  .prices a:hover { background: #1a1a1a; border-color: #555; }
+  .note {
+    font-family: 'Courier New', monospace;
+    font-size: .68rem;
+    color: #3a3a3a;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="eyebrow">Launch Edition — PDF</div>
+  <h1>Around the Moon in a Day</h1>
+  <div class="author">Michael Jayne</div>
+  <p class="desc">Hard science fiction grounded in real selenographic coordinates. Commander Varga and her crew set out to cross the Moon by ground — and discovered exactly what that costs.</p>
+  <div class="label">Pay what feels right</div>
+  <div class="prices">
+    <a href="https://buy.stripe.com/REPLACE_BOOK_3">$3</a>
+    <a href="https://buy.stripe.com/REPLACE_BOOK_5">$5</a>
+    <a href="https://buy.stripe.com/REPLACE_BOOK_10">$10</a>
+  </div>
+  <div class="note">PDF delivered immediately after payment. Early buyers receive free updated edition when corrections are made.</div>
+</div>
+</body>
+</html>
