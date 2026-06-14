@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Moon Map - Limits (Chapter 23)</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+
+<style>
+body { margin:0; background:black; }
+#map { width:100%; height:100vh; }
+
+.map-label{
+background:#000;
+color:#fff;
+padding:6px 8px;
+font-size:12px;
+border-radius:4px;
+font-family:monospace;
+border:1px solid #888;
+box-shadow:0 0 6px rgba(0,0,0,0.8);
+}
+
+.no-icon{
+background:transparent!important;
+border:none!important;
+}
+
+.leaflet-tooltip:before{display:none;}
+</style>
+</head>
+
+<body>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+
+const W = 8192;
+const H = 4096;
+
+const CRS = L.extend({}, L.CRS.Simple,{
+  transformation:new L.Transformation(1,0,-1,H)
+});
+
+const map = L.map("map",{crs:CRS,minZoom:-2,maxZoom:2});
+
+const bounds=[[0,0],[H,W]];
+L.imageOverlay("moon.jpg",bounds).addTo(map);
+map.fitBounds(bounds);
+
+
+// geo conversion
+function geo(lat,lon){
+  const x=(lon+180)/360*W;
+  const y=(90-lat)/180*H;
+  return L.latLng(H-y,x);
+}
+
+
+// ✅ ICONS
+
+function staticGreenLander(){
+return L.divIcon({
+html:`<svg width="22" height="20">
+<rect x="4" y="6" width="14" height="8" fill="#44ff88"/>
+</svg>`,
+className:"no-icon"
+});
+}
+
+function returnGreenLander(){
+return L.divIcon({
+html:`<svg width="24" height="28">
+<polygon points="12,2 22,14 2,14" fill="#44ff88"/>
+<rect x="6" y="16" width="12" height="6" fill="#44ff88"/>
+</svg>`,
+className:"no-icon"
+});
+}
+
+// ✅ GOLD LANDER (no return)
+function goldLander(){
+return L.divIcon({
+html:`<svg width="22" height="20">
+<rect x="4" y="6" width="14" height="8" fill="#ffaa00"/>
+</svg>`,
+className:"no-icon"
+});
+}
+
+
+// ✅ LOCATIONS
+const russell = geo(26.98937,-75.43499);
+const lacus   = geo(-29.03672,104.64474);
+
+// ✅ GOLD ENDPOINT (restored from your earlier coordinate)
+const goldEnd = geo(-23.62808,163.33574);
+
+
+// ROUTES
+const routes=[
+"rout3leg01.kml","rout3leg02.kml","rout3leg03.kml",
+"rout3leg04.kml","rout3leg05.kml","rout3leg06.kml",
+"rout3leg07.kml","rout3leg08.kml","rout3leg09.kml",
+"rout3leg10.kml","rout3leg11.kml"
+];
+
+routes.forEach((file,i)=>{
+
+fetch("data/"+file)
+.then(r=>r.text())
+.then(text=>{
+
+const xml=new DOMParser().parseFromString(text,"text/xml");
+
+xml.querySelectorAll("coordinates").forEach(node=>{
+
+let lastLon=null;
+let segment=[];
+let segments=[];
+
+node.textContent.trim().split(/\s+/).forEach(p=>{
+let [lon,lat]=p.split(",");
+lon=parseFloat(lon);
+lat=parseFloat(lat);
+
+if(isNaN(lat)||isNaN(lon)) return;
+
+if(lastLon!==null && Math.abs(lon-lastLon)>180){
+if(segment.length>1) segments.push(segment);
+segment=[];
+}
+
+lastLon=lon;
+segment.push(geo(lat,lon));
+});
+
+if(segment.length>1) segments.push(segment);
+
+
+// ✅ COLOR LOGIC
+let color;
+
+if(i<=3){
+  color="#ffaa00";   // gold
+}
+else if(i<=5){
+  color="#00ffff";   // cyan
+}
+else{
+  color="#44ff88";   // green
+}
+
+segments.forEach(s=>{
+L.polyline(s,{
+color:color,
+weight:3
+}).addTo(map);
+});
+
+});
+
+});
+
+});
+
+
+// ✅ LANDERS
+
+// Russell → static green
+L.marker(russell,{icon:staticGreenLander()}).addTo(map)
+.bindTooltip("ASTERION SITE",
+{permanent:true,offset:[0,-70],className:"map-label"});
+
+
+// Lacus → return green
+L.marker(lacus,{icon:returnGreenLander()}).addTo(map)
+.bindTooltip("LONG MARCH SITE",
+{permanent:true,offset:[0,-70],className:"map-label"});
+
+
+// ✅ ✅ RESTORED GOLD TERMINUS
+L.marker(goldEnd,{icon:goldLander()}).addTo(map)
+.bindTooltip(
+"TERMINUS NODE",
+{permanent:true,offset:[0,-70],className:"map-label"}
+);
+
+</script>
+</body>
+</html>

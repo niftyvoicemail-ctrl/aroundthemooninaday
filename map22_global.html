@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Moon Map - Crater Belt (Chapter 22)</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+
+<style>
+body { margin:0; background:black; }
+#map { width:100%; height:100vh; }
+
+.map-label{
+background:#000;
+color:#fff;
+padding:6px 8px;
+font-size:12px;
+border-radius:4px;
+font-family:monospace;
+border:1px solid #888;
+box-shadow:0 0 6px rgba(0,0,0,0.8);
+}
+
+.no-icon{
+background:transparent!important;
+border:none!important;
+}
+
+.leaflet-tooltip:before{display:none;}
+</style>
+</head>
+
+<body>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+
+const W = 8192;
+const H = 4096;
+
+const CRS = L.extend({}, L.CRS.Simple,{
+  transformation:new L.Transformation(1,0,-1,H)
+});
+
+const map = L.map("map",{crs:CRS,minZoom:-2,maxZoom:2});
+
+const bounds=[[0,0],[H,W]];
+L.imageOverlay("moon.jpg",bounds).addTo(map);
+map.fitBounds(bounds);
+
+
+// geo → pixel
+function geo(lat,lon){
+  const x=(lon+180)/360*W;
+  const y=(90-lat)/180*H;
+  return L.latLng(H-y,x);
+}
+
+
+// ✅ ICONS
+
+// Asterion lander (amber)
+function asterionIcon(){
+return L.divIcon({
+html:`<svg width="22" height="28">
+<polygon points="11,2 21,14 1,14" fill="#ffaa00"/>
+<rect x="5" y="16" width="12" height="6" fill="#ffaa00"/>
+</svg>`,
+className:"no-icon"
+});
+}
+
+// Long March lander (green)
+function longMarchIcon(){
+return L.divIcon({
+html:`<svg width="22" height="28">
+<polygon points="11,2 21,14 1,14" fill="#44ff88"/>
+<rect x="5" y="16" width="12" height="6" fill="#44ff88"/>
+</svg>`,
+className:"no-icon"
+});
+}
+
+// ✅ NEW: Long March rover (green)
+function roverIcon(){
+return L.divIcon({
+html:`<svg width="28">
+<rect x="6" y="10" width="20" height="6" fill="#44ff88"/>
+<circle cx="10" cy="20" r="3" fill="#44ff88"/>
+<circle cx="22" cy="20" r="3" fill="#44ff88"/>
+</svg>`,
+className:"no-icon"
+});
+}
+
+
+// ✅ REAL LOCATIONS
+const russell = geo(26.98937,-75.43499);
+const lacus   = geo(-29.03672,104.64474);
+
+
+// ROUTES
+const routes=[
+"rout3leg01.kml","rout3leg02.kml","rout3leg03.kml",
+"rout3leg04.kml","rout3leg05.kml","rout3leg06.kml",
+"rout3leg07.kml","rout3leg08.kml","rout3leg09.kml",
+"rout3leg10.kml","rout3leg11.kml"
+];
+
+routes.forEach((file,i)=>{
+
+fetch("data/"+file)
+.then(r=>r.text())
+.then(text=>{
+
+const xml=new DOMParser().parseFromString(text,"text/xml");
+
+xml.querySelectorAll("coordinates").forEach(node=>{
+
+let lastLon=null;
+let segment=[];
+let segments=[];
+
+node.textContent.trim().split(/\s+/).forEach(p=>{
+let [lon,lat]=p.split(",");
+lon=parseFloat(lon);
+lat=parseFloat(lat);
+
+if(isNaN(lat)||isNaN(lon)) return;
+
+if(lastLon!==null && Math.abs(lon-lastLon)>180){
+if(segment.length>1) segments.push(segment);
+segment=[];
+}
+
+lastLon=lon;
+segment.push(geo(lat,lon));
+});
+
+if(segment.length>1) segments.push(segment);
+
+// ✅ COLOR LOGIC
+let color = (i >= 6) ? "#44ff88" : "#00ffff"; 
+// 0–5 = cyan, 6–10 = green
+
+segments.forEach(s=>{
+L.polyline(s,{
+color:color,
+weight:3
+}).addTo(map);
+});
+
+});
+
+});
+
+});
+
+
+// ✅ LANDERS (unchanged)
+L.marker(russell,{icon:asterionIcon()}).addTo(map)
+.bindTooltip("ASTERION LANDING SITE",
+{permanent:true,offset:[0,-80],className:"map-label"});
+
+L.marker(lacus,{icon:longMarchIcon()}).addTo(map)
+.bindTooltip("LONG MARCH LANDING SITE",
+{permanent:true,offset:[0,-80],className:"map-label"});
+
+
+// ✅ NEW: LONG MARCH ROVER AT RUSSELL
+L.marker([russell.lat, russell.lng+12],{icon:roverIcon()}).addTo(map);
+
+</script>
+
+</body>
+</html>

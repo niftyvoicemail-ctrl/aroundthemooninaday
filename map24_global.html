@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Moon Map - Structural Phase (Chapter 24)</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+
+<style>
+body { margin:0; background:black; }
+#map { width:100%; height:100vh; }
+</style>
+</head>
+
+<body>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+
+const W = 8192;
+const H = 4096;
+
+const CRS = L.extend({}, L.CRS.Simple,{
+  transformation:new L.Transformation(1,0,-1,H)
+});
+
+const map = L.map("map",{crs:CRS,minZoom:-2,maxZoom:2});
+
+const bounds=[[0,0],[H,W]];
+L.imageOverlay("moon.jpg",bounds).addTo(map);
+map.fitBounds(bounds);
+
+
+// geo conversion
+function geo(lat,lon){
+  const x=(lon+180)/360*W;
+  const y=(90-lat)/180*H;
+  return L.latLng(H-y,x);
+}
+
+
+// locations
+const russellLat = 26.98937;
+const russellLon = -75.43499;
+
+const lacusLat = -29.03672;
+const lacusLon = 104.64474;
+
+
+// routes (all cyan)
+const routes=[
+"rout3leg01.kml","rout3leg02.kml","rout3leg03.kml",
+"rout3leg04.kml","rout3leg05.kml","rout3leg06.kml",
+"rout3leg07.kml","rout3leg08.kml","rout3leg09.kml",
+"rout3leg10.kml","rout3leg11.kml"
+];
+
+routes.forEach(file=>{
+
+fetch("data/"+file)
+.then(r=>r.text())
+.then(text=>{
+
+const xml=new DOMParser().parseFromString(text,"text/xml");
+
+xml.querySelectorAll("coordinates").forEach(node=>{
+
+let lastLon=null;
+let segment=[];
+let segments=[];
+
+node.textContent.trim().split(/\s+/).forEach(p=>{
+let [lon,lat]=p.split(",");
+lon=parseFloat(lon);
+lat=parseFloat(lat);
+
+if(isNaN(lat)||isNaN(lon)) return;
+
+if(lastLon!==null && Math.abs(lon-lastLon)>180){
+if(segment.length>1) segments.push(segment);
+segment=[];
+}
+
+lastLon=lon;
+segment.push(geo(lat,lon));
+});
+
+if(segment.length>1) segments.push(segment);
+
+segments.forEach(s=>{
+L.polyline(s,{
+color:"#00ffff",
+weight:3
+}).addTo(map);
+});
+
+});
+
+});
+
+});
+
+
+// ✅ FINAL FIX — stop well inside visible bounds
+
+// north (Russell → +70°)
+L.polyline([
+  geo(russellLat, russellLon),
+  geo(70, russellLon)
+],{
+  color:"#ff4444",
+  weight:2,
+  dashArray:"6,6"
+}).addTo(map);
+
+
+// south (Lacus → -70°)
+L.polyline([
+  geo(lacusLat, lacusLon),
+  geo(-70, lacusLon)
+],{
+  color:"#ff4444",
+  weight:2,
+  dashArray:"6,6"
+}).addTo(map);
+
+</script>
+</body>
+</html>

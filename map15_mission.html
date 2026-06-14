@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Moon Map - Mission (Chapter 15)</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+
+<style>
+body{margin:0;background:black;}
+#map{width:100%;height:100vh;}
+
+.map-label{
+background:#111;
+color:#fff;
+padding:6px 8px;
+font-size:11px;
+border-radius:4px;
+font-family:monospace;
+border:1px solid #444;
+}
+
+.no-icon{
+background:transparent!important;
+border:none!important;
+}
+
+.leaflet-tooltip:before{display:none;}
+</style>
+</head>
+
+<body>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+
+const W=8192,H=4096;
+
+const CRS=L.extend({},L.CRS.Simple,{
+transformation:new L.Transformation(1,0,-1,H)
+});
+
+const map=L.map("map",{crs:CRS,minZoom:-2,maxZoom:4});
+
+// wrap
+L.imageOverlay("moon.jpg",[[0,-W],[H,0]]).addTo(map);
+L.imageOverlay("moon.jpg",[[0,0],[H,W]]).addTo(map);
+L.imageOverlay("moon.jpg",[[0,W],[H,2*W]]).addTo(map);
+
+function geo(lat,lon){
+const x=(lon+180)/360*W;
+const y=(90-lat)/180*H;
+return L.latLng(H-y,x+W);
+}
+
+// ✅ RED LANDER
+function landerIcon(){
+return L.divIcon({
+html:`<svg width="24" height="28">
+<polygon points="12,2 22,14 2,14" fill="#ff4444"/>
+<rect x="6" y="16" width="12" height="6" fill="#ff4444"/>
+</svg>`,
+className:"no-icon"
+});
+}
+
+// ✅ RED ROVER
+function roverIcon(){
+return L.divIcon({
+html:`<svg width="28">
+<rect x="6" y="12" width="20" height="6" fill="#ff4444"/>
+<circle cx="10" cy="22" r="3" fill="#ff4444"/>
+<circle cx="22" cy="22" r="3" fill="#ff4444"/>
+</svg>`,
+className:"no-icon"
+});
+}
+
+
+// LOAD ROUTE
+fetch("data/rout3leg07.kml")
+.then(r=>r.text())
+.then(text=>{
+
+let pts=[];
+
+const xml=new DOMParser().parseFromString(text,"text/xml");
+
+xml.querySelectorAll("coordinates").forEach(n=>{
+n.textContent.trim().split(/\s+/).forEach(p=>{
+let parts=p.split(",");
+let lon=parseFloat(parts[0]);
+let lat=parseFloat(parts[1]);
+
+if(!isNaN(lat)&&!isNaN(lon)){
+pts.push(geo(lat,lon));
+}
+});
+});
+
+pts.reverse();
+
+const line=L.polyline(pts,{color:"#ff4444",weight:3}).addTo(map);
+map.fitBounds(line.getBounds().pad(0.3));
+
+const left=pts[0];
+const right=pts[pts.length-1];
+
+// LEFT → BALMER
+L.marker(left,{opacity:0}).addTo(map)
+.bindTooltip(
+"BALMER CRATER<br>UTC: 08/18/2032, 01:23<br>MLLST: 1:02:49<br>RLLST: 15:45",
+{permanent:true,offset:[0,-80],className:"map-label"}
+);
+
+// RIGHT → LACUS
+L.marker(right,{opacity:0}).addTo(map)
+.bindTooltip(
+"LACUS SOLITUDINIS<br>Distance: 995 km<br>Average Speed: 20 km/h",
+{permanent:true,offset:[0,-90],className:"map-label"}
+);
+
+
+// ✅ FINAL FIX — BOTH ICONS RIGHT SIDE
+
+L.marker([right.lat, right.lng-10], {icon: landerIcon()}).addTo(map);
+L.marker([right.lat, right.lng+10], {icon: roverIcon()}).addTo(map);
+
+});
+
+</script>
+
+</body>
+</html>

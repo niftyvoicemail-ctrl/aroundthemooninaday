@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Moon Map - Mission 07</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+
+<style>
+body { margin:0; background:black; }
+#map { width:100%; height:100vh; }
+
+.map-label{
+  background:#111;
+  color:#fff;
+  padding:6px 8px;
+  font-size:11px;
+  border-radius:4px;
+  font-family:monospace;
+  border:1px solid #444;
+}
+
+/* remove tooltip arrow */
+.leaflet-tooltip:before{ display:none; }
+</style>
+</head>
+
+<body>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+
+const W=8192;
+const H=4096;
+
+const CRS=L.extend({},L.CRS.Simple,{
+  transformation:new L.Transformation(1,0,-1,H)
+});
+
+const map=L.map("map",{crs:CRS,minZoom:-2,maxZoom:4});
+
+// GEO
+function geo(lat,lon){
+  const x=(lon+180)/360*W;
+  const y=(90-lat)/180*H;
+  return L.latLng(H-y,x);
+}
+
+// TILE LAYER
+const TL=L.GridLayer.extend({
+  createTile(c){
+    let img=document.createElement("img");
+    let scale=Math.pow(2,c.z);
+    let px=Math.floor(c.x/scale)*256;
+    let py=Math.floor(c.y/scale)*256;
+    img.src=`tiles/tile_${px}_${py}.png`;
+    img.style.width="256px";
+    img.style.height="256px";
+    return img;
+  }
+});
+map.addLayer(new TL({tileSize:256}));
+
+// ✅ LANDER (improved + legs)
+function landerIcon(){
+  return L.divIcon({
+    html:`
+    <svg width="26" height="26" viewBox="0 0 32 32">
+      
+      <!-- body -->
+      <polygon points="16,6 26,18 6,18" fill="#ff4444"/>
+
+      <!-- return module -->
+      <rect x="12" y="18" width="8" height="5" fill="#ff4444"/>
+
+      <!-- legs -->
+      <line x1="10" y1="18" x2="6" y2="26" stroke="#ff4444" stroke-width="2"/>
+      <line x1="22" y1="18" x2="26" y2="26" stroke="#ff4444" stroke-width="2"/>
+
+    </svg>`,
+    iconSize:[26,26],
+    className:""
+  });
+}
+
+// ✅ ROVER (clear + visible)
+function roverIcon(){
+  return L.divIcon({
+    html:`
+    <svg width="28" height="28" viewBox="0 0 32 32">
+
+      <!-- body -->
+      <rect x="6" y="12" width="20" height="6" fill="#ff4444"/>
+
+      <!-- mast -->
+      <line x1="16" y1="12" x2="16" y2="6" stroke="#ff4444" stroke-width="2"/>
+
+      <!-- camera -->
+      <circle cx="16" cy="5" r="2" fill="#ff4444"/>
+
+      <!-- wheels -->
+      <circle cx="10" cy="22" r="3" fill="#ff4444"/>
+      <circle cx="22" cy="22" r="3" fill="#ff4444"/>
+
+    </svg>`,
+    iconSize:[28,28],
+    className:""
+  });
+}
+
+// LOAD ROUTE
+fetch("data/rout3leg01.kml")
+.then(r=>r.text())
+.then(text=>{
+
+  const xml=new DOMParser().parseFromString(text,"text/xml");
+  let pts=[];
+
+  xml.querySelectorAll("coordinates").forEach(n=>{
+    n.textContent.trim().split(/\s+/).forEach(p=>{
+      let [lon,lat]=p.split(",");
+      pts.push(geo(parseFloat(lat),parseFloat(lon)));
+    });
+  });
+
+  let line=L.polyline(pts,{color:"#ff4444",weight:3}).addTo(map);
+
+  map.fitBounds(line.getBounds().pad(0.3));
+
+  // ✅ LOCK ZOOM (fix drift)
+  setTimeout(()=>{
+    let z=map.getZoom();
+    map.setMinZoom(z);
+    map.setMaxZoom(z);
+    map.dragging.disable();
+  },200);
+
+  let start=pts[0];
+  let end=pts[pts.length-1];
+
+  // ✅ START (lander)
+  L.marker(start,{icon:landerIcon()}).addTo(map)
+  .bindTooltip(
+    "start Russell Crater<br>UTC: 07/22/2032 12:00<br>MLLST: 06:48<br>RLLST: 06:48",
+    {permanent:true,offset:[120,-40],className:"map-label"}
+  );
+
+  // ✅ END (rover)
+  L.marker(end,{icon:roverIcon()}).addTo(map)
+  .bindTooltip(
+    "Helberg Crater<br>Distance: 720 km Speed: 8 km/h<br>MLLST: 09:49 RLLST 07:00",
+    {permanent:true,offset:[-140,-40],className:"map-label"}
+  );
+
+});
+
+</script>
+</body>
+</html>

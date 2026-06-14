@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Moon Map - Chapter 26 (The Route That Stayed)</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+
+<style>
+body { margin:0; background:black; }
+#map { width:100%; height:100vh; }
+
+.map-label{
+background:#000;
+padding:6px 10px;
+font-size:12px;
+font-family:monospace;
+color:#fff;
+border:1px solid #fff;
+border-radius:4px;
+white-space:nowrap;
+}
+
+.no-icon{
+background:transparent!important;
+border:none!important;
+}
+
+.leaflet-tooltip:before{display:none;}
+</style>
+</head>
+
+<body>
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+
+// ===================
+// BASE MAP
+// ===================
+const W = 8192;
+const H = 4096;
+
+const CRS = L.extend({}, L.CRS.Simple,{
+  transformation:new L.Transformation(1,0,-1,H)
+});
+
+const map = L.map("map",{crs:CRS,minZoom:-2,maxZoom:2});
+
+const bounds=[[0,0],[H,W]];
+L.imageOverlay("moon.jpg",bounds).addTo(map);
+map.fitBounds(bounds);
+
+
+// ===================
+// GEO
+// ===================
+function geo(lat,lon){
+  const x=(lon+180)/360*W;
+  const y=(90-lat)/180*H;
+  return L.latLng(H-y,x);
+}
+
+const russell = geo(26.98937,-75.43499);
+const lacus   = geo(-29.03672,104.64474);
+
+
+// ===================
+// ROUTE NETWORK
+// ===================
+const routes=[
+"rout3leg01.kml","rout3leg02.kml","rout3leg03.kml",
+"rout3leg04.kml","rout3leg05.kml","rout3leg06.kml",
+"rout3leg07.kml","rout3leg08.kml","rout3leg09.kml",
+"rout3leg10.kml","rout3leg11.kml"
+];
+
+routes.forEach(file=>{
+fetch("data/"+file).then(r=>r.text()).then(text=>{
+const xml=new DOMParser().parseFromString(text,"text/xml");
+
+xml.querySelectorAll("coordinates").forEach(node=>{
+let last=null,seg=[],segs=[];
+
+node.textContent.trim().split(/\s+/).forEach(p=>{
+let [lon,lat]=p.split(",");
+lon=parseFloat(lon); lat=parseFloat(lat);
+
+if(isNaN(lat)||isNaN(lon)) return;
+
+if(last!==null && Math.abs(lon-last)>180){
+if(seg.length>1) segs.push(seg);
+seg=[];
+}
+
+last=lon;
+seg.push(geo(lat,lon));
+});
+
+if(seg.length>1) segs.push(seg);
+
+segs.forEach(s=>{
+L.polyline(s,{
+color:"#00ffff",
+weight:3,
+opacity:0.5
+}).addTo(map);
+});
+});
+});
+});
+
+
+// ===================
+// POLAR BYPASS (SOLID)
+// ===================
+let north=[],south=[];
+for(let lon=-180;lon<=180;lon+=2){
+north.push(geo(70,lon));
+south.push(geo(-70,lon));
+}
+
+L.polyline(north,{color:"#ff4444",weight:2}).addTo(map);
+L.polyline(south,{color:"#ff4444",weight:2}).addTo(map);
+
+
+// ===================
+// VERTICALS
+// ===================
+
+// Russell → NORTH (solid)
+L.polyline([
+russell,
+geo(70,-75.43499)
+],{
+color:"#ff4444",
+weight:2
+}).addTo(map);
+
+// Russell → SOUTH (dotted)
+L.polyline([
+russell,
+geo(-70,-75.43499)
+],{
+color:"#ff4444",
+weight:2,
+dashArray:"6,6"
+}).addTo(map);
+
+// Lacus → NORTH (dotted)
+L.polyline([
+lacus,
+geo(70,104.64474)
+],{
+color:"#ff4444",
+weight:2,
+dashArray:"6,6"
+}).addTo(map);
+
+// ✅ Lacus → SOUTH (NOW SOLID)
+L.polyline([
+lacus,
+geo(-70,104.64474)
+],{
+color:"#ff4444",
+weight:2
+}).addTo(map);
+
+
+// ===================
+// WINNER FLAG (RUSSELL)
+// ===================
+function flagIcon(){
+return L.divIcon({
+html:`
+<svg width="28" height="28">
+<rect x="2" y="2" width="24" height="24" fill="white"/>
+<rect x="2" y="2" width="12" height="12" fill="black"/>
+<rect x="14" y="14" width="12" height="12" fill="black"/>
+</svg>
+`,
+className:"no-icon"
+});
+}
+
+let winPos = russell;
+
+let m = L.marker(winPos,{icon:flagIcon()}).addTo(map);
+
+let t = m.bindTooltip("AURORA TRAVERSE CONSORTIUM",{
+permanent:true,
+offset:[120,0],
+className:"map-label"
+}).getTooltip();
+
+
+// subtle highlight (optional but nice)
+L.circle(winPos,{
+radius:60,
+color:"#ffffff",
+weight:1,
+opacity:0.5
+}).addTo(map);
+
+</script>
+</body>
+</html>

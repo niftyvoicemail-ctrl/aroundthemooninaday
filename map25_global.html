@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Moon Map - Chapter 25 (Final Tweaked)</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+
+<style>
+body { margin:0; background:black; }
+#map { width:100%; height:100vh; }
+
+.map-label{
+background:#000;
+padding:5px 8px;
+font-size:11px;
+font-family:monospace;
+color:#fff;
+border:1px solid;
+border-radius:3px;
+white-space:nowrap;
+}
+
+.no-icon{
+background:transparent!important;
+border:none!important;
+}
+
+.leaflet-tooltip:before{display:none;}
+</style>
+</head>
+
+<body>
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+
+const W=8192,H=4096;
+
+const CRS=L.extend({},L.CRS.Simple,{
+transformation:new L.Transformation(1,0,-1,H)
+});
+
+const map=L.map("map",{crs:CRS,minZoom:-2,maxZoom:2});
+const bounds=[[0,0],[H,W]];
+L.imageOverlay("moon.jpg",bounds).addTo(map);
+map.fitBounds(bounds);
+
+
+// GEO
+function geo(lat,lon){
+const x=(lon+180)/360*W;
+const y=(90-lat)/180*H;
+return L.latLng(H-y,x);
+}
+
+const russell=geo(26.98937,-75.43499);
+const lacus=geo(-29.03672,104.64474);
+const crooks=geo(-9.10588,-165.59761);
+const silber=geo(5.34167,12.12787);
+
+
+// ===================
+// ROUTES + STRUCTURE (unchanged)
+// ===================
+const routes=["rout3leg01.kml","rout3leg02.kml","rout3leg03.kml","rout3leg04.kml","rout3leg05.kml","rout3leg06.kml","rout3leg07.kml","rout3leg08.kml","rout3leg09.kml","rout3leg10.kml","rout3leg11.kml"];
+
+routes.forEach(f=>{
+fetch("data/"+f).then(r=>r.text()).then(t=>{
+const xml=new DOMParser().parseFromString(t,"text/xml");
+xml.querySelectorAll("coordinates").forEach(n=>{
+let last=null,seg=[],segs=[];
+n.textContent.trim().split(/\s+/).forEach(p=>{
+let [lon,lat]=p.split(",");
+lon=parseFloat(lon); lat=parseFloat(lat);
+if(isNaN(lat)||isNaN(lon)) return;
+if(last!==null && Math.abs(lon-last)>180){
+if(seg.length>1) segs.push(seg);
+seg=[];
+}
+last=lon;
+seg.push(geo(lat,lon));
+});
+if(seg.length>1) segs.push(seg);
+segs.forEach(s=>{
+L.polyline(s,{color:"#00ffff",weight:3}).addTo(map);
+});
+});
+});
+});
+
+let north=[],south=[];
+for(let lon=-180;lon<=180;lon+=2){
+north.push(geo(70,lon));
+south.push(geo(-70,lon));
+}
+L.polyline(north,{color:"#ff4444",dashArray:"6,6"}).addTo(map);
+L.polyline(south,{color:"#ff4444",dashArray:"6,6"}).addTo(map);
+
+L.polyline([russell,geo(70,-75.43499)],{color:"#ff4444"}).addTo(map);
+L.polyline([lacus,geo(-70,104.64474)],{color:"#ff4444"}).addTo(map);
+
+
+// ICONS
+function lander(c){
+return L.divIcon({
+html:`<svg width="22" height="26"><polygon points="11,2 21,14 1,14" fill="${c}"/><rect x="5" y="16" width="12" height="6" fill="${c}"/></svg>`,
+className:"no-icon"
+});
+}
+
+function evac(c){
+return L.divIcon({
+html:`<svg width="22" height="16"><rect x="4" y="4" width="14" height="8" fill="${c}"/></svg>`,
+className:"no-icon"
+});
+}
+
+
+function place(base,angle,r){
+const a=angle*Math.PI/180;
+return L.latLng(base.lat+r*Math.sin(a), base.lng+r*Math.cos(a));
+}
+
+
+// ===================
+// FINAL DATA (ADJUSTED OFFSETS)
+// ===================
+const data=[
+
+/* ===== RUSSELL ===== */
+{base:russell,angle:220,r:25,n:"SINO-LUNAR (TEAM 05)",c:"#ffffff",t:"lander",off:[0,-170]},
+{base:russell,angle:270,r:25,n:"VALLES RESUPPLY",c:"#ffaa00",t:"lander",off:[-110,40]},
+{base:russell,angle:320,r:25,n:"ORBITAL GS (TEAM 08)",c:"#cc66ff",t:"lander",off:[90,0]},
+
+/* ===== SILBER ===== */
+{base:silber,angle:260,r:25,n:"BOREALIS (TEAM 06)",c:"#66ccff",t:"lander",off:[10,120]},
+{base:silber,angle:200,r:25,n:"AURORA RESUPPLY",c:"#ff66cc",t:"lander",off:[90,-10]},
+{base:silber,angle:320,r:70,n:"EVAC SILBERSCHLAG - ORBITAL",c:"#cc66ff",t:"evac",off:[-120,-40]},
+
+/* ===== LACUS ===== */
+{base:lacus,angle:20,r:25,n:"VALLES (TEAM 07)",c:"#ffaa00",t:"lander",off:[80,90]},
+{base:lacus,angle:90,r:25,n:"ORBITAL RESUPPLY",c:"#cc66ff",t:"lander",off:[-50,-100]},
+{base:lacus,angle:140,r:70,n:"EVAC LACUS - SINO-LUNAR",c:"#ffffff",t:"evac",off:[110,-10]},
+
+/* ===== CROOKS ===== */
+{base:crooks,angle:20,r:70,n:"EVAC CROOKS - AURORA",c:"#ff66cc",t:"evac",off:[70,70]},
+{base:crooks,angle:55,r:70,n:"EVAC CROOKS - BOREALIS",c:"#66ccff",t:"evac",off:[80,0]},
+{base:crooks,angle:85,r:70,n:"EVAC CROOKS - VALLES",c:"#ffaa00",t:"evac",off:[0,-90]}
+
+];
+
+
+// DRAW
+data.forEach(x=>{
+const pos=place(x.base,x.angle,x.r);
+
+let m=L.marker(pos,{
+icon:(x.t==="evac")?evac(x.c):lander(x.c)
+}).addTo(map);
+
+let t=m.bindTooltip(x.n,{
+permanent:true,
+offset:x.off,
+className:"map-label"
+}).getTooltip();
+
+t.getElement().style.borderColor=x.c;
+
+});
+
+</script>
+</body>
+</html>

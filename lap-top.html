@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Reyes Field Terminal</title>
+<style>
+
+:root {
+  --bg:         #0f1117;
+  --surface:    #161b27;
+  --surface2:   #1c2235;
+  --surface3:   #222840;
+  --border:     #2a3248;
+  --border-hi:  #3d4f72;
+  --accent:     #3d8ef0;
+  --accent2:    #6ab0ff;
+  --accent-glow:rgba(61,142,240,0.15);
+  --amber:      #f0a830;
+  --amber-glow: rgba(240,168,48,0.12);
+  --green:      #34c478;
+  --green-glow: rgba(52,196,120,0.15);
+  --red:        #e05050;
+  --text:       #b8ccec;
+  --text-hi:    #deeaff;
+  --text-dim:   #506080;
+  --radius:     10px;
+  --radius-sm:  6px;
+  --font:       'Courier New', Courier, monospace;
+  --shadow:     0 4px 24px rgba(0,0,0,0.5);
+  --shadow-sm:  0 2px 8px rgba(0,0,0,0.4);
+}
+
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+
+body {
+  background: var(--bg);
+  background-image: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(61,142,240,0.08) 0%, transparent 70%);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 12px;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── TOP BAR ── */
+#topbar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 18px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-shrink: 0;
+  box-shadow: var(--shadow-sm);
+}
+.tb-id {
+  color: var(--accent2);
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 0.12em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pulse {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+  animation: pulse 2.5s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity:1; box-shadow:0 0 6px var(--green); }
+  50%      { opacity:0.5; box-shadow:0 0 2px var(--green); }
+}
+.tb-pill {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 11px;
+  color: var(--text-dim);
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.tb-pill span { color: var(--text-hi); }
+#tb-clock {
+  margin-left: auto;
+  color: var(--accent);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 3px 12px;
+}
+
+/* ── CHAPTER BAR ── */
+#chapterbar {
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+#chapterbar label {
+  color: var(--text-dim);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+#chapter-input {
+  background: var(--surface2);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--radius-sm);
+  color: var(--amber);
+  font-family: var(--font);
+  font-size: 18px;
+  padding: 4px 10px;
+  width: 70px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+#chapter-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+#set-btn {
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: bold;
+  padding: 6px 18px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  box-shadow: 0 2px 12px rgba(61,142,240,0.35);
+  transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
+}
+#set-btn:hover  { background: var(--accent2); box-shadow: 0 2px 18px rgba(61,142,240,0.5); }
+#set-btn:active { transform: scale(0.97); }
+#ch-status {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 3px 12px;
+}
+
+/* ── TILE GRID ── */
+#grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  grid-template-rows: 1.8fr 1fr;
+  gap: 8px;
+  padding: 0 10px 10px;
+  overflow: hidden;
+}
+
+/* ── TILE ── */
+.tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+}
+.tile:hover {
+  border-color: var(--border-hi);
+  box-shadow: 0 0 0 1px var(--accent), var(--shadow);
+  transform: translateY(-1px);
+}
+.tile-header {
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+  user-select: none;
+}
+.tile-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--border-hi);
+  flex-shrink: 0;
+}
+.tile-dot.on   { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.tile-dot.warn { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+.tile-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-dim);
+  transition: color 0.2s;
+}
+.tile-title.active { color: var(--accent2); }
+.tile-badge {
+  margin-left: auto;
+  font-size: 9px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: var(--border);
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+}
+.tile-badge.live { background: var(--green-glow); color: var(--green); border: 1px solid rgba(52,196,120,0.35); }
+.tile-badge.info { background: var(--accent-glow); color: var(--accent2); border: 1px solid rgba(61,142,240,0.3); }
+.tile-badge.warn { background: var(--amber-glow); color: var(--amber); border: 1px solid rgba(240,168,48,0.3); }
+.tile-badge.draft { background: rgba(176,130,255,0.12); color: #b082ff; border: 1px solid rgba(176,130,255,0.3); }
+
+.tile-body {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+.tile-body iframe {
+  width: 100%; height: 100%;
+  border: none;
+  background: #000;
+  display: block;
+  pointer-events: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+.tile-lock {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(160deg, var(--surface) 0%, var(--bg) 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+.lock-icon  { font-size: 22px; opacity: 0.18; filter: grayscale(1); }
+.lock-text  { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.12em; }
+
+.tile-hint {
+  position: absolute;
+  bottom: 8px; right: 10px;
+  font-size: 9px;
+  color: var(--accent);
+  background: var(--accent-glow);
+  border: 1px solid rgba(61,142,240,0.25);
+  border-radius: 8px;
+  padding: 2px 8px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+  letter-spacing: 0.08em;
+}
+.tile:hover .tile-hint { opacity: 1; }
+
+/* ── HOME TILE ── */
+.home-content {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  height: 100%;
+}
+.mini-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.mini-stat {
+  background: var(--surface3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+}
+.mini-stat .ms-label { font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; }
+.mini-stat .ms-val   { font-size: 15px; color: var(--amber); margin-top: 2px; }
+.log-label {
+  font-size: 9px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: 2px;
+}
+.mini-log { flex:1; overflow-y:auto; }
+.mini-log-row {
+  display: flex;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+  line-height: 1.6;
+  align-items: flex-start;
+}
+.mini-log-row:last-child { border-bottom:none; }
+.mlr-msg  { color: var(--text); flex:1; }
+.mlr-flag { color: var(--amber); flex-shrink:0; }
+
+/* ── ARTICLE TILE ── */
+.article-content {
+  padding: 12px 14px;
+  overflow-y: auto;
+  height: 100%;
+  line-height: 1.7;
+  font-size: 11px;
+  color: var(--text);
+}
+.article-content .art-hed {
+  color: var(--text-hi);
+  font-size: 12px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+  line-height: 1.4;
+}
+.article-content .art-note {
+  color: var(--amber);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin: 8px 0 3px;
+}
+.article-content .art-scratch {
+  color: var(--text-dim);
+  font-style: italic;
+}
+.article-content .art-done {
+  color: var(--text);
+}
+.article-content .art-q {
+  color: #b082ff;
+  font-size: 10px;
+}
+
+/* ── FULLSCREEN OVERLAY ── */
+#fullscreen {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(10,12,18,0.92);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+#fullscreen.open { display: flex; }
+#fs-window {
+  background: var(--surface);
+  border: 1px solid var(--border-hi);
+  border-radius: 14px;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+#fs-header {
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  border-radius: 14px 14px 0 0;
+  padding: 9px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+#fs-title { color: var(--accent2); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; }
+.fs-ch-pill {
+  background: var(--accent-glow);
+  border: 1px solid rgba(61,142,240,0.3);
+  border-radius: 10px;
+  padding: 2px 10px;
+  font-size: 10px;
+  color: var(--accent2);
+}
+#fs-close {
+  margin-left: auto;
+  background: var(--surface3);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 11px;
+  padding: 5px 14px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  transition: border-color 0.15s, color 0.15s;
+}
+#fs-close:hover { border-color: var(--accent); color: var(--accent2); }
+#fs-body { flex: 1; overflow: hidden; }
+#fs-body iframe { width:100%; height:100%; border:none; background:#000; display:block; }
+
+/* article fullscreen */
+#fs-article {
+  display: none;
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 32px;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--text);
+}
+#fs-article.visible { display: block; }
+#fs-article .art-hed  { color:var(--text-hi); font-size:16px; margin-bottom:10px; border-bottom:1px solid var(--border); padding-bottom:8px; }
+#fs-article .art-note { color:var(--amber); font-size:10px; text-transform:uppercase; letter-spacing:0.1em; margin:14px 0 4px; }
+#fs-article .art-scratch { color:var(--text-dim); font-style:italic; }
+#fs-article .art-done    { color:var(--text); }
+#fs-article .art-q       { color:#b082ff; font-size:11px; }
+
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div id="topbar">
+  <div class="tb-id"><div class="pulse"></div> RFT-7</div>
+  <div class="tb-pill">UPLINK <span>OK</span></div>
+  <div class="tb-pill">RELAY <span>LUN-RELAY-04</span></div>
+  <div class="tb-pill">SIG <span id="sig">93%</span></div>
+  <div id="tb-clock">——:——:—— UTC</div>
+</div>
+
+<!-- CHAPTER BAR -->
+<div id="chapterbar">
+  <label>Chapter</label>
+  <input id="chapter-input" type="number" min="1" max="26" placeholder="—">
+  <button id="set-btn" onclick="applyChapter()">Load</button>
+  <div id="ch-status">● ENTER CHAPTER</div>
+</div>
+
+<!-- TILE GRID -->
+<div id="grid">
+
+  <!-- MAP — full top row -->
+  <div class="tile" id="tile-map" style="grid-column:1/5; grid-row:1;" onclick="expandTile('map','◎ Surface Map')">
+    <div class="tile-header">
+      <div class="tile-dot" id="dot-map"></div>
+      <span class="tile-title" id="tt-map">MAP</span>
+      <span class="tile-badge" id="tb-map">—</span>
+    </div>
+    <div class="tile-body">
+      <div class="tile-lock" id="lock-map"><span class="lock-icon">🌕</span><span class="lock-text">Locked</span></div>
+      <iframe id="frame-map" src="about:blank" onload="onMapLoad()"></iframe>
+    </div>
+    <span class="tile-hint">↗ expand</span>
+  </div>
+
+  <!-- HOME — bottom col 1 -->
+  <div class="tile" id="tile-home" style="grid-column:1; grid-row:2;">
+    <div class="tile-header">
+      <div class="tile-dot" id="dot-home"></div>
+      <span class="tile-title" id="tt-home">HOME</span>
+      <span class="tile-badge" id="tb-home">—</span>
+    </div>
+    <div class="tile-body">
+      <div class="home-content">
+        <div class="mini-stats">
+          <div class="mini-stat" style="grid-column:1/-1">
+            <div class="ms-label">Chapter</div>
+            <div class="ms-val" id="hs-ch">—</div>
+          </div>
+        </div>
+        <div class="log-label">Field Notes</div>
+        <div class="mini-log" id="mini-log">
+          <div class="mini-log-row">
+            <span class="mlr-msg" style="color:var(--text-dim)">Awaiting chapter input...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FEED — bottom col 2 -->
+  <div class="tile" id="tile-feed" style="grid-column:2; grid-row:2;" onclick="expandTile('feed','▤ Mission Feed')">
+    <div class="tile-header">
+      <div class="tile-dot" id="dot-feed"></div>
+      <span class="tile-title" id="tt-feed">FEED</span>
+      <span class="tile-badge live" id="tb-feed">LIVE</span>
+    </div>
+    <div class="tile-body">
+      <div class="tile-lock" id="lock-feed"><span class="lock-icon">▤</span><span class="lock-text">Locked</span></div>
+      <iframe id="frame-feed" src="about:blank"></iframe>
+    </div>
+    <span class="tile-hint">↗ expand</span>
+  </div>
+
+  <!-- DISPATCH — bottom col 3 -->
+  <div class="tile" id="tile-article" style="grid-column:3; grid-row:2;" onclick="expandArticle()">
+    <div class="tile-header">
+      <div class="tile-dot warn" id="dot-article"></div>
+      <span class="tile-title active" id="tt-article">DISPATCH</span>
+      <span class="tile-badge draft" id="tb-article">DRAFT</span>
+    </div>
+    <div class="tile-body">
+      <div class="article-content" id="article-preview">
+        <div class="art-scratch" style="color:var(--text-dim)">No chapter loaded.</div>
+      </div>
+    </div>
+    <span class="tile-hint">↗ expand</span>
+  </div>
+
+  <!-- STORE — bottom col 4, always open -->
+  <div class="tile" id="tile-store" style="grid-column:4; grid-row:2;" onclick="expandTile('store','◈ Get the Book')">
+    <div class="tile-header">
+      <div class="tile-dot on"></div>
+      <span class="tile-title active">STORE</span>
+      <span class="tile-badge info">OPEN</span>
+    </div>
+    <div class="tile-body">
+      <iframe id="frame-store" src="store.html" style="display:block"></iframe>
+    </div>
+    <span class="tile-hint">↗ expand</span>
+  </div>
+
+</div>
+
+<!-- FULLSCREEN OVERLAY -->
+<div id="fullscreen">
+  <div id="fs-window">
+    <div id="fs-header">
+      <span id="fs-title">—</span>
+      <span class="fs-ch-pill">Chapter <span id="fs-ch">—</span></span>
+      <button id="fs-close" onclick="closeFullscreen()">✕ Close</button>
+    </div>
+    <div id="fs-body">
+      <iframe id="fs-frame" src="about:blank"></iframe>
+      <div id="fs-article"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ================================================================
+//  MAP FILE ROUTING
+//  ch 1-6    → map01_global.html
+//  ch 7-8    → map07_mission.html
+//  ch 9-10   → map09_mission.html
+//  ch 11     → map11_mission.html
+//  ch 12-13  → map12_mission.html
+//  ch 14     → map14_mission.html
+//  ch 15     → map15_mission.html
+//  ch 16-18  → map16_global.html
+//  ch 19     → map19_global.html
+//  ch 20     → map20_global.html
+//  ch 21     → map21_global.html
+//  ch 22     → map22_global.html
+//  ch 23     → map23_global.html
+//  ch 24     → map24_global.html
+//  ch 25     → map25_global.html
+//  ch 26     → map26_global.html
+// ================================================================
+function getMapFile(ch) {
+  if (ch <= 6)   return 'map01_global.html';
+  if (ch <= 8)   return 'map07_mission.html';
+  if (ch <= 10)  return 'map09_mission.html';
+  if (ch === 11) return 'map11_mission.html';
+  if (ch <= 13)  return 'map12_mission.html';
+  if (ch === 14) return 'map14_mission.html';
+  if (ch === 15) return 'map15_mission.html';
+  if (ch <= 18)  return 'map16_global.html';
+  if (ch === 19) return 'map19_global.html';
+  if (ch === 20) return 'map20_global.html';
+  if (ch === 21) return 'map21_global.html';
+  if (ch === 22) return 'map22_global.html';
+  if (ch === 23) return 'map23_global.html';
+  if (ch === 24) return 'map24_global.html';
+  if (ch === 25) return 'map25_global.html';
+  return 'map26_global.html';
+}
+
+// ================================================================
+//  CHAPTER CONFIG
+//  article: array of blocks, each is { type, text }
+//    type "done"    = polished prose
+//    type "scratch" = shorthand / rough notes (italic, dimmed)
+//    type "note"    = Reyes meta-note to himself (amber label)
+//    type "q"       = open question / reminder (purple)
+//    type "hed"     = working headline
+// ================================================================
+const CHAPTERS = {
+  1: {
+    mapLabel:'GLOBAL',
+    mapZoom: 'fitBounds',   // signal to map: fit whole image
+    log:[
+      { msg:'The room was dark in the way only late-night apartments get — light from screens left on too long.' },
+      { msg:'A billion U.S. dollars will be awarded to the first verified team to complete a full ground circumnavigation of the lunar surface.' },
+      { msg:'That part mattered more than the billion. It always did. The Moon wasn\'t the prize. It was the proof.', flag:'◈' },
+      { msg:'UNCONFIRMED — DESCENT VEHICLE REPORTS DEBRIS IMPACT DURING LUNAR APPROACH.', flag:'⚠' }
+    ],
+    article:[
+      { type:'hed',     text:'THE RACE NOBODY BELIEVED WOULD START' },
+      { type:'note',    text:'// WORKING TITLE — too dramatic? check with desk' },
+      { type:'done',    text:'The announcement came at eleven-seventeen on a Tuesday, through a satellite feed that nobody was monitoring. A billion U.S. dollars. One circumnavigation. Ground contact only.' },
+      { type:'scratch', text:'— verify exact timestamp w/ LCI press office' },
+      { type:'done',    text:'The Lunar Circumnavigation Initiative had spent four years assembling the legal framework, the insurance scaffolding, the rescue protocols. The announcement was almost an afterthought.' },
+      { type:'q',       text:'?? who actually watched the feed live — get a quote from someone in the room' },
+      { type:'scratch', text:'— note: debris impact report came in same night. unconfirmed. nobody followed up. why??' },
+      { type:'done',    text:'What nobody said out loud that night: the billion was not the point. The infrastructure required to survive the route was.' }
+    ]
+  },
+  2: {
+    mapLabel:'GLOBAL', mapZoom:'fitBounds',
+    log:[
+      { msg:'The registration list kept growing. Teams that had been planning for years were finally committing publicly.' },
+      { msg:'Everyone understood the real objective. The route wasn\'t the challenge. The infrastructure to survive it was.' }
+    ],
+    article:[
+      { type:'hed',     text:'THE FIELD FILLS IN' },
+      { type:'note',    text:'// ch 2 draft — registration period opens' },
+      { type:'done',    text:'Within seventy-two hours of the announcement, eleven teams had submitted intent-to-register filings. Within a week, the number had tripled.' },
+      { type:'scratch', text:'— get breakdown by nation/corp affiliation. Helios obv. Who else serious?' },
+      { type:'done',    text:'The public list was a document of ambition and denial. Teams with no vehicle. Teams with a vehicle and no route plan. Teams that existed, it seemed, primarily to hold the registration slot.' },
+      { type:'q',       text:'?? LCI requires proof of vehicle capability before leg 1 — how many of the 30+ will actually make start line?' },
+      { type:'scratch', text:'— need comment from LCI eligibility office. calls not returned yet.' },
+      { type:'done',    text:'The serious money, everyone agreed, was moving quietly.' }
+    ]
+  },
+  3: {
+    mapLabel:'GLOBAL', mapZoom:'fitBounds',
+    log:[
+      { msg:'Helios Dynamics announced their vehicle. The solar canopy alone was wider than anything that had landed on the Moon before.' },
+      { msg:'Too much shielding. Too much panel area. Too many compromises. That was the analysis from every engineer not on their team.' }
+    ],
+    article:[
+      { type:'hed',     text:'HELIOS DYNAMICS AND THE PROBLEM OF GOING BIG' },
+      { type:'note',    text:'// vehicle reveal piece — keep neutral, Helios PR has been helpful' },
+      { type:'done',    text:'The Helios Dynamics vehicle was the largest rover ever certified for lunar surface operations. Its solar canopy spanned fourteen meters. Its thermal management system alone weighed more than some competing rovers in total.' },
+      { type:'scratch', text:'— confirm canopy dimensions with published spec sheet. 14m or 12m?' },
+      { type:'done',    text:'The engineering community\'s reaction split immediately along predictable lines. Former NASA engineers who had worked on mobility platforms were skeptical. The vehicle was optimized for continuous operation in ideal solar geometry. The route was not ideal.' },
+      { type:'q',       text:'?? ask Helios lead engineer directly: what happens at Hermite — no solar for extended stretches. do they have a contingency??' },
+      { type:'scratch', text:'— they declined comment on northern section strategy. that\'s its own story.' }
+    ]
+  },
+  4: {
+    mapLabel:'GLOBAL', mapZoom:'fitBounds',
+    log:[
+      { msg:'Press credential approved. Surface embedded program. One of a rotating pool — the civilian access program that hadn\'t existed three years ago.' },
+      { msg:'Reyes looked once more at the route visualizations. Thin lines traced across cratered stone like veins drawn by someone who had never walked on anything.' }
+    ],
+    article:[
+      { type:'hed',     text:'DISPATCHES FROM THE PRESS POOL: GETTING CREDENTIALED FOR THE MOON' },
+      { type:'note',    text:'// personal/first person piece — editor said yes. keep it short, don\'t make it about me' },
+      { type:'done',    text:'The embedded press program did not exist three years ago. It was created as a concession — the LCI needed independent observers, and independent observers needed access. The compromise produced twelve rotating press slots for the duration of the competition.' },
+      { type:'scratch', text:'— how long is my rotation? confirm duration with LCI comms.' },
+      { type:'done',    text:'I spent two weeks in certification training. Suit operations. Emergency protocols. The psychology module was four hours long and covered, in some detail, what isolation does to perception over time.' },
+      { type:'q',       text:'?? can I quote the psych module instructor? ask.' },
+      { type:'scratch', text:'— the route maps look simple on a screen. they don\'t look simple on a screen anymore.' }
+    ]
+  },
+  5: {
+    mapLabel:'GLOBAL', mapZoom:'fitBounds',
+    log:[
+      { msg:'The narration had that calm, rehearsed confidence from people who were no longer surprised by anything happening off Earth.' },
+      { msg:'Descent window confirmed. No anomalies in approach corridor.' }
+    ],
+    article:[
+      { type:'hed',     text:'DESCENT: NOTES IN TRANSIT' },
+      { type:'note',    text:'// in-transit piece — file before surface access begins' },
+      { type:'scratch', text:'— approach narration from comms crew: "nominal, nominal, nominal." everything is always nominal until it isn\'t.' },
+      { type:'done',    text:'The descent took eleven minutes from deorbit burn to surface contact. The commentary from the flight operations team was calm in the way that institutional training produces calm — not the absence of concern, but its organized suppression.' },
+      { type:'scratch', text:'— no anomalies in approach corridor. true. but that debris report from ch1 — still unresolved. follow up on surface.' },
+      { type:'q',       text:'?? who filed the original debris report and why was it classified unconfirmed — FOIA?' },
+      { type:'done',    text:'The Moon, seen from the descent camera feed, is the color of old paper. Not white. Not gray. Something between the two, the way things look when the color has been slowly removed by time.' }
+    ]
+  },
+  6: {
+    mapLabel:'GLOBAL', mapZoom:'fitBounds',
+    log:[
+      { msg:'Russell Crater barely resembled the isolated outpost Helios Dynamics had first encountered. Scout repair depots stretched along the landing perimeter.' },
+      { msg:'Microwave transmission towers stood on nearby ridges like skeletal antenna forests against the horizon.', flag:'◈' },
+      { msg:'All seven teams operational. Nobody finished. That was the pattern.' }
+    ],
+    article:[
+      { type:'hed',     text:'RUSSELL CRATER: INFRASTRUCTURE AS ARGUMENT' },
+      { type:'note',    text:'// hub overview piece — this place is a story in itself. separate sidebar??' },
+      { type:'done',    text:'Russell Crater is not a base in any conventional sense. It is an accumulation — of equipment, of infrastructure decisions, of competing organizational priorities that have been physically instantiated in regolith and relay hardware.' },
+      { type:'scratch', text:'— count the transmission towers on the eastern ridge. I saw at least six. get exact number from site manager.' },
+      { type:'done',    text:'Seven teams staged here at the start of the competition period. Nobody had finished. That was the pattern across all prior LCI-adjacent expeditions: reach the hub, prepare extensively, depart with confidence, return changed.' },
+      { type:'q',       text:'?? find someone who\'s been here longer than 18 months — what does extended surface presence do to how you think about the route?' },
+      { type:'scratch', text:'— the repair depots alone are worth a piece. Helios has a full machine shop down here.' }
+    ]
+  },
+  7: {
+    mapLabel:'LEG 1',
+    log:[
+      { msg:'The rover did not stop moving during setup. Even while unloading cargo modules, its systems remained fully active.' },
+      { msg:'Radiators glowing faintly against the black horizon. No energy pauses. No deployment cycle delays. No waiting for sunlight geometry.', flag:'◈' },
+      { msg:'Route deviation logged near Janssen approach. Terrain variability increasing.', flag:'⚠' }
+    ],
+    article:[
+      { type:'hed',     text:'LEG ONE: THE MACHINE THAT DIDN\'T WAIT' },
+      { type:'note',    text:'// leg 1 dispatch — lead with the rover behavior at departure. that\'s the image.' },
+      { type:'done',    text:'The Helios vehicle did not stop moving during its departure sequence. While ground crew unloaded the last supply modules, the rover\'s drive systems remained active, making micro-corrections, holding position against the slight grade at the crater rim. It did not power down. It did not pause.' },
+      { type:'scratch', text:'— radiators glowing against black sky. get this in. it\'s the shot.' },
+      { type:'done',    text:'This was, in miniature, the argument Helios Dynamics had been making for three years: continuous operation was not a feature of their design. It was the design.' },
+      { type:'q',       text:'?? route deviation near Janssen — was this planned or reactive? terrain data mismatch??' },
+      { type:'scratch', text:'— file route deviation incident separately if it develops. flag for follow-up.' }
+    ]
+  },
+  8: {
+    mapLabel:'LEG 1',
+    log:[
+      { msg:'Their mission profile looked conservative on paper. But everyone understood the real objective.' },
+      { msg:'Hermite access. The northern connection project had already moved beyond theory.' }
+    ],
+    article:[
+      { type:'hed',     text:'WHAT THE CONSERVATIVE PROFILE IS HIDING' },
+      { type:'note',    text:'// leg 1 continued — everyone is doing something they\'re not saying out loud' },
+      { type:'done',    text:'On paper, the Helios leg-one profile looked like caution. Moderate speed. Established waypoints. No ambitious terrain choices in the first four hundred kilometers.' },
+      { type:'scratch', text:'— but the northern section isn\'t on any public route filing. check against LCI submission database.' },
+      { type:'done',    text:'Hermite Crater, near the north pole, had been discussed in infrastructure planning documents as a potential secondary hub for years. The energy mathematics of the northern corridors were well understood: in winter geometry, solar panels were useless. Nuclear or nothing.' },
+      { type:'q',       text:'?? confirm: is Helios the only team with a power profile that can operate north of 70 latitude in current season?' },
+      { type:'scratch', text:'— if yes, that means only one team can actually complete the full route. the race is already over and nobody has said it.' }
+    ]
+  },
+  9: {
+    mapLabel:'LEG 2',
+    log:[
+      { msg:'Fast terrain. Long visibility lines. And one critical vulnerability: distance.' },
+      { msg:'Their resupply operations depended entirely on Russell Crater remaining functional as a logistics hub.', flag:'⚠' }
+    ],
+    article:[
+      { type:'hed',     text:'LEG TWO: SPEED AND ITS DEPENDENCIES' },
+      { type:'note',    text:'// leg 2 — the terrain changes character here. write that.' },
+      { type:'done',    text:'The second leg crosses terrain that encourages speed. Long flat visibility lines. Stable regolith composition. The kind of surface where drive systems perform exactly as modeled.' },
+      { type:'scratch', text:'— talk to at least one driver about what "stable regolith" feels like vs what the models said. probably different.' },
+      { type:'done',    text:'But speed on leg two creates a dependency that teams have not fully stress-tested: distance from Russell Crater. The resupply architecture for most competitors assumes the hub remains fully operational throughout. It has, so far. That is not the same as guaranteed.' },
+      { type:'q',       text:'?? what is the hub\'s current operational status? who\'s actually maintaining it while teams are in the field?' },
+      { type:'scratch', text:'— nobody is talking about hub vulnerability. that might be the story.' }
+    ]
+  },
+  10: {
+    mapLabel:'LEG 2',
+    log:[
+      { msg:'The surface encouraged speed. That was the trap. Micro-fractures propagated through wheel assemblies faster than predictive models expected.' },
+      { msg:'Crooks Crater — barely operational. Extraction followed forty hours later.' }
+    ],
+    article:[
+      { type:'hed',     text:'THE COST OF FAST TERRAIN' },
+      { type:'note',    text:'// wheel failure piece — this is what I was tracking in leg 2 notes' },
+      { type:'done',    text:'The failure mode was predictable in retrospect. Micro-fractures in wheel assembly composite materials propagate at rates that laboratory models underestimate when accounting for sustained high-speed operation over regolith with variable sub-surface density.' },
+      { type:'scratch', text:'— get engineering detail from someone. that sentence is right directionally but needs a real source.' },
+      { type:'done',    text:'The team reached Crooks Crater. They reached it in poor condition. The crater\'s emergency repair station was operational in the minimal sense — power and communications. The repair equipment itself required forty hours of work before extraction became possible.' },
+      { type:'q',       text:'?? Crooks Crater listed as "emergency capable" in LCI documentation — what does that actually mean? file records request.' },
+      { type:'scratch', text:'— "barely operational" is mine. confirm with team after extraction.' }
+    ]
+  },
+  11: {
+    mapLabel:'NORTH',
+    log:[
+      { msg:'High-latitude shadow persistence near the northern corridor destabilized portions of the scout timing network.' },
+      { msg:'Not enough to lose navigation. Enough to lose efficiency. Energy delays accumulated. Travel windows compressed. Margins disappeared.', flag:'⚠' }
+    ],
+    article:[
+      { type:'hed',     text:'THE NORTHERN CORRIDOR: MARGINS' },
+      { type:'note',    text:'// this section is the hardest to write. the story is in what doesn\'t happen.' },
+      { type:'done',    text:'North of sixty-five degrees latitude, the competition does not look like a race. It looks like a series of small decisions made under accumulating constraint.' },
+      { type:'scratch', text:'— shadow persistence messing w/ scout network timing. find the operations person who manages that. there\'s a human story here.' },
+      { type:'done',    text:'Energy margins narrow. Travel windows compress. Teams that entered the northern section with what looked like comfortable reserves have found that comfort was a calculation made at lower latitudes.' },
+      { type:'q',       text:'?? what is the actual energy delta between planned and actual for the teams currently north? can I get numbers?' },
+      { type:'scratch', text:'— nobody\'s talking about this publicly. the silence is louder than anything in the official updates.' }
+    ]
+  },
+  12: {
+    mapLabel:'POLAR',
+    log:[
+      { msg:'The reactor-driven rover ignored limitations that had constrained every earlier expedition. No solar timing. No deployment pauses.' },
+      { msg:'The machine was no longer adapting itself to the Moon. It was beginning to alter the environment around it.', flag:'⚠' }
+    ],
+    article:[
+      { type:'hed',     text:'HERMITE: THE ROVER THAT CHANGES THE QUESTION' },
+      { type:'note',    text:'// polar approach — this is the piece. this is what everything has been building to.' },
+      { type:'done',    text:'Near Hermite Crater, the competition reveals what it has actually been measuring. Not speed. Not endurance. The capacity of a machine — and the organization behind it — to operate where the environment offers nothing.' },
+      { type:'scratch', text:'— reactor-driven. no solar dependency. this is the only vehicle in the field that doesn\'t need to calculate sunlight geometry.' },
+      { type:'done',    text:'The Helios vehicle moved through the polar approach without pausing. No deployment windows. No energy conservation intervals. The radiators that had glowed faintly at Russell Crater departure glowed the same way here, at the edge of permanent shadow, as if the distance hadn\'t registered.' },
+      { type:'q',       text:'?? "altering the environment" — thermal plume data from the reactor at this proximity to PSR. is this documented anywhere?' },
+      { type:'scratch', text:'— the machine is not adapting to the Moon anymore. write that. that\'s the lede.' }
+    ]
+  }
+};
+
+// ================================================================
+//  RUNTIME
+// ================================================================
+let currentChapter = 0;
+let currentArticleHTML = '';
+
+function getCfg(ch) {
+  if (CHAPTERS[ch]) return CHAPTERS[ch];
+  const keys = Object.keys(CHAPTERS).map(Number).filter(k=>k<=ch).sort((a,b)=>b-a);
+  return keys.length ? CHAPTERS[keys[0]] : null;
+}
+
+function renderArticle(blocks) {
+  return blocks.map(b => {
+    if (b.type === 'hed')     return `<div class="art-hed">${b.text}</div>`;
+    if (b.type === 'note')    return `<div class="art-note">${b.text}</div>`;
+    if (b.type === 'scratch') return `<div class="art-scratch">${b.text}</div>`;
+    if (b.type === 'done')    return `<div class="art-done">${b.text}</div>`;
+    if (b.type === 'q')       return `<div class="art-q">${b.text}</div>`;
+    return '';
+  }).join('\n');
+}
+
+function applyChapter() {
+  const val = parseInt(document.getElementById('chapter-input').value);
+  if (!val || val < 1) return;
+  currentChapter = val;
+
+  const cfg = getCfg(val);
+
+  // status pill
+  const statusEl = document.getElementById('ch-status');
+  statusEl.textContent = '● CH ' + val + ' LOADED';
+  statusEl.style.color = 'var(--green)';
+  statusEl.style.background = 'var(--green-glow)';
+  statusEl.style.borderColor = 'rgba(52,196,120,0.3)';
+
+  // home tile
+  document.getElementById('hs-ch').textContent = val;
+  document.getElementById('tb-home').textContent = 'CH ' + val;
+  document.getElementById('tb-home').className = 'tile-badge info';
+  document.getElementById('tt-home').classList.add('active');
+  document.getElementById('dot-home').classList.add('on');
+
+  if (cfg && cfg.log) {
+    document.getElementById('mini-log').innerHTML = cfg.log.map(e =>
+      `<div class="mini-log-row">
+        <span class="mlr-msg">${e.msg}</span>
+        ${e.flag ? `<span class="mlr-flag">${e.flag}</span>` : ''}
+       </div>`
+    ).join('');
+  }
+
+  // article tile
+  if (cfg && cfg.article) {
+    const html = renderArticle(cfg.article);
+    currentArticleHTML = html;
+    document.getElementById('article-preview').innerHTML = html;
+    document.getElementById('tb-article').textContent = 'DRAFT';
+  }
+
+  // map — always pass chapter so map can set its own zoom
+  const mapFile = getMapFile(val);
+  const mapLabel = cfg ? (cfg.mapLabel || 'GLOBAL') : 'GLOBAL';
+  loadPane('map',   mapFile + '?chapter=' + val, mapLabel, 'info');
+  loadPane('feed',  'feed.html?chapter='  + val, 'LIVE', 'live');
+  // store is always loaded — skip
+}
+
+function onMapLoad() {
+  const frame = document.getElementById('frame-map');
+  const src = frame.src || '';
+  const isGlobal = src.includes('_global');
+
+  setTimeout(() => {
+    try {
+      const win = frame.contentWindow;
+      if (!win) return;
+      // Try to trigger fitBounds if the map exposes itself
+      if (win.map && win.imageBounds) {
+        win.map.invalidateSize();
+        win.map.fitBounds(win.imageBounds);
+      } else if (win.map) {
+        win.map.invalidateSize();
+      }
+    } catch(e) { /* cross-origin or not ready */ }
+  }, 500);
+}
+
+function loadPane(name, src, badge, badgeClass) {
+  const frame   = document.getElementById('frame-' + name);
+  const lockEl  = document.getElementById('lock-'  + name);
+  const titleEl = document.getElementById('tt-'    + name);
+  const badgeEl = document.getElementById('tb-'    + name);
+  const dotEl   = document.getElementById('dot-'   + name);
+
+  frame.src = src;
+  if (lockEl)  lockEl.style.display  = 'none';
+  frame.style.display = 'block';
+  if (titleEl) titleEl.classList.add('active');
+  if (dotEl)   dotEl.classList.add('on');
+  if (badge && badgeEl) {
+    badgeEl.textContent = badge;
+    badgeEl.className = 'tile-badge' + (badgeClass ? ' ' + badgeClass : '');
+  }
+}
+
+function expandTile(name, title) {
+  if (!currentChapter && name !== 'store') return;
+  const frame = document.getElementById('frame-' + name);
+  const src = frame ? frame.src : null;
+  if (!src || src === 'about:blank') return;
+
+  document.getElementById('fs-title').textContent = title;
+  document.getElementById('fs-ch').textContent = currentChapter || '—';
+  document.getElementById('fs-frame').src = src;
+  document.getElementById('fs-frame').style.display = 'block';
+  document.getElementById('fs-article').classList.remove('visible');
+  document.getElementById('fullscreen').classList.add('open');
+}
+
+function expandArticle() {
+  if (!currentArticleHTML) return;
+  document.getElementById('fs-title').textContent = '✎ DISPATCH — DRAFT';
+  document.getElementById('fs-ch').textContent = currentChapter;
+  document.getElementById('fs-frame').src = 'about:blank';
+  document.getElementById('fs-frame').style.display = 'none';
+  document.getElementById('fs-article').innerHTML = currentArticleHTML;
+  document.getElementById('fs-article').classList.add('visible');
+  document.getElementById('fullscreen').classList.add('open');
+}
+
+function closeFullscreen() {
+  document.getElementById('fullscreen').classList.remove('open');
+  document.getElementById('fs-frame').src = 'about:blank';
+  document.getElementById('fs-article').classList.remove('visible');
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeFullscreen();
+  if (e.key === 'Enter' && document.activeElement.id === 'chapter-input') applyChapter();
+});
+
+// clock
+function tick() {
+  const n = new Date(), p = x => String(x).padStart(2,'0');
+  document.getElementById('tb-clock').textContent =
+    `${p(n.getUTCHours())}:${p(n.getUTCMinutes())}:${p(n.getUTCSeconds())} UTC`;
+  const sigs = ['91%','92%','93%','94%','92%','91%','93%'];
+  document.getElementById('sig').textContent = sigs[n.getUTCSeconds() % sigs.length];
+}
+setInterval(tick, 1000); tick();
+</script>
+</body>
+</html>

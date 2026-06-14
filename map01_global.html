@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Moon Map - Global</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+
+<style>
+body { margin:0; background:black; }
+#map { width:100%; height:100vh; }
+</style>
+</head>
+
+<body>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+
+const W = 8192;
+const H = 4096;
+
+const CRS = L.extend({}, L.CRS.Simple, {
+  transformation: new L.Transformation(1,0,-1,H)
+});
+
+const map = L.map("map",{crs:CRS,minZoom:-2,maxZoom:2});
+const bounds = [[0,0],[H,W]];
+
+// Base moon
+L.imageOverlay("moon.jpg",bounds).addTo(map);
+map.fitBounds(bounds);
+
+// Convert geo → pixel
+function geo(lat,lon){
+  const x=(lon+180)/360*W;
+  const y=(90-lat)/180*H;
+  return L.latLng(H-y,x);
+}
+
+// ✅ EQUATOR (ONLY LINE LEFT)
+let eq=[];
+for(let lon=-180; lon<=180; lon+=2){
+  eq.push(geo(0,lon));
+}
+L.polyline(eq,{color:"#00ffff",weight:1}).addTo(map);
+
+// ✅ LOAD ROUTES (WRAP-SAFE)
+const routes = [
+"rout3leg01.kml","rout3leg02.kml","rout3leg03.kml",
+"rout3leg04.kml","rout3leg05.kml","rout3leg06.kml",
+"rout3leg07.kml","rout3leg08.kml","rout3leg09.kml",
+"rout3leg10.kml","rout3leg11.kml"
+];
+
+routes.forEach(file=>{
+  fetch("data/"+file)
+  .then(r=>r.text())
+  .then(text=>{
+    const xml=new DOMParser().parseFromString(text,"text/xml");
+
+    xml.querySelectorAll("coordinates").forEach(node=>{
+
+      let lastLon=null;
+      let segment=[];
+      let segments=[];
+
+      node.textContent.trim().split(/\s+/).forEach(p=>{
+        let [lon,lat]=p.split(",");
+        lon=parseFloat(lon);
+        lat=parseFloat(lat);
+
+        if(isNaN(lat)||isNaN(lon)) return;
+
+        // ✅ prevents wrap line
+        if(lastLon!==null && Math.abs(lon-lastLon)>180){
+          if(segment.length>1) segments.push(segment);
+          segment=[];
+        }
+
+        lastLon=lon;
+        segment.push(geo(lat,lon));
+      });
+
+      if(segment.length>1) segments.push(segment);
+
+      segments.forEach(s=>{
+        L.polyline(s,{color:"#ff4444",weight:2}).addTo(map);
+      });
+
+    });
+
+  });
+});
+
+</script>
+</body>
+</html>

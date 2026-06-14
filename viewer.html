@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Moon Map (2D + KMZ Smooth)</title>
+
+  <style>
+    html, body {
+      margin:0;
+      height:100%;
+      background:black;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      font-family: monospace;
+    }
+
+    #container {
+      position:relative;
+      width:90%;
+      max-width:1200px;
+    }
+
+    img {
+      width:100%;
+      display:block;
+    }
+
+    canvas {
+      position:absolute;
+      top:0;
+      left:0;
+    }
+
+    #ui {
+      position:absolute;
+      top:10px;
+      left:10px;
+      background:rgba(0,0,0,0.6);
+      padding:10px;
+      color:#aac8e0;
+      z-index:10;
+    }
+
+    button {
+      padding:5px 10px;
+      background:#222;
+      border:1px solid #444;
+      color:#aac8e0;
+      cursor:pointer;
+      margin-bottom:5px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div id="container">
+
+  <img id="moon"
+    src="https://astrogeology.usgs.gov/ckan/dataset/db948a2d-4d6a-4775-a0d3-12613d36f9e7/resource/d24d5ef3-abc5-42ee-ac7c-4c3261106327/download/moon_lro_lroc-wac_mosaic_global_1024.jpg">
+
+  <canvas id="overlay"></canvas>
+
+  <div id="ui">
+    <button onclick="toggleGrid()">Toggle Grid</button><br>
+    <button onclick="toggleLabels()">Toggle Labels</button><br>
+    <button onclick="loadKMZ('rout%2003.kmz')">Load Route</button>
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<script>
+
+const img = document.getElementById("moon");
+const canvas = document.getElementById("overlay");
+const ctx = canvas.getContext("2d");
+
+let showGrid = true;
+let showLabels = true;
+
+// =======================
+// GEO → PIXEL
+// =======================
+function geoToPixel(lat, lon) {
+  const w = canvas.width;
+  const h = canvas.height;
+
+  const x = (lon + 180) / 360 * w;
+  const y = (90 - lat) / 180 * h;
+
+  return {x, y};
+}
+
+// =======================
+// GREAT CIRCLE INTERPOLATION
+// =======================
+function interpolate(lat1, lon1, lat2, lon2, steps = 20) {
+
+  const pts = [];
+
+  for (let i = 0; i <= steps; i++) {
+
+    const t = i / steps;
+
+    // simple interpolation (fast, good enough visually)
+    const lat = lat1 + (lat2 - lat1) * t;
+    const lon = lon1 + (lon2 - lon1) * t;
+
+    pts.push({lat, lon});
+  }
+
+  return pts;
+}
+
+// =======================
+// DRAW KMZ LINE (SMOOTH)
+// =======================
+function drawKMZLine(coordString) {
+
+  const raw = coordString.trim().split(/\s+/);
+
+  const coords = raw.map(p => {
+    const [lon, lat] = p.split(",").map(Number);
+    return {lat, lon};
+  });
+
+  ctx.strokeStyle = "yellow";
+  ctx.lineWidth = 2;
+
+  let prevLon = null;
+
+  ctx.beginPath();
+
+  for (let i = 1; i < coords.length; i++) {
+
+    const a = coords[i - 1];
+    const b = coords[i];
+
+    const segment = interpolate(a.lat, a.lon, b.lat, b.lon, 25);
+
+    segment.forEach(({lat, lon}, j) => {
+
+      // ✅ wrap fix
+      if (prevLon !== null && Math.abs(prevLon - lon) > 180) {
+        ctx.stroke();
+        ctx.beginPath();
+      }
+
+      const {x, y} = geoToPixel(lat, lon);
+
+      if (i === 1 && j === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+
+      prevLon = lon;
+    });
+  }
+
+  ctx.stroke();
+}
+
+// =======================
+// PARSE KML
+// =======================
+function parseKML(text) {
+  const xml = new DOMParser().parseFromString(text, "text/xml");
+
+  const lines = xml.querySelectorAll("LineString coordinates");
+
+  lines.forEach(line => {
+    drawKMZLine(line.textContent);
+  });
+}
+
+// =======================
+// LOAD KMZ
+// =======================
+async function loadKMZ(file) {
+
+  const res = await fetch(file);
+  const blob = await res.blob();
+
+  const zip = await JSZip.loadAsync(blob);
+
+  const kmlFile = Object.values(zip.files)
+    .find(f => f.name.endsWith(".kml"));
+
+  const text = await kmlFile.async("string");
+
+  parseKML(text);
+}
+
+// =======================
+// GRID
+// =======================
+function drawGrid() {
+
+  if (!showGrid) return;
+
+  ctx.strokeStyle = "rgba(0,150,255,0.4)";
+  ctx.lineWidth = 1;
+
+  const w = canvas.width;
+  const h = canvas.height;
+
+  for(let lon=-180; lon<=180; lon+=10){
+    let x = (lon + 180)/360 * w;
+    ctx.beginPath();
+    ctx.moveTo(x,0);
+    ctx.lineTo(x,h);
+    ctx.stroke();
+  }
+
+  for(let lat=-80; lat<=80; lat+=10){
+    let y = (90 - lat)/180 * h;
+    ctx.beginPath();
+    ctx.moveTo(0,y);
+    ctx.lineTo(w,y);
+    ctx.stroke();
+  }
+}
+
+// =======================
+// LABELS
+// =======================
+function drawLabel(lat, lon, name) {
+
+  if (!showLabels) return;
+
+  const {x, y} = geoToPixel(lat, lon);
+
+  ctx.fillStyle = "red";
+  ctx.beginPath();
+  ctx.arc(x, y, 4, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "white";
+  ctx.fillText(name, x + 6, y - 6);
+}
+
+// =======================
+// MAIN DRAW
+// =======================
+function drawAll() {
+
+  canvas.width = img.clientWidth;
+  canvas.height = img.clientHeight;
+
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  drawGrid();
+  drawLabel(-28.8, 142.5, "Pavlov Crater");
+}
+
+// =======================
+// TOGGLES
+// =======================
+function toggleGrid(){
+  showGrid = !showGrid;
+  drawAll();
+}
+
+function toggleLabels(){
+  showLabels = !showLabels;
+  drawAll();
+}
+
+// INIT
+img.onload = drawAll;
+window.addEventListener("resize", drawAll);
+
+</script>
+
+</body>
+</html>

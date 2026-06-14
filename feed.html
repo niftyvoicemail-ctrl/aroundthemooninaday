@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Live Feed</title>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+body {
+  background: #0c0e14;
+  color: #a8c0d8;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 12px;
+}
+#container { padding: 10px 12px; }
+h3 {
+  color: #4a9eff;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #1e2836;
+  padding-bottom: 6px;
+}
+.post {
+  border-bottom: 1px solid #1a2030;
+  padding: 8px 4px;
+}
+.post-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 3px;
+}
+.user { color: #5ab0ff; font-size: 11px; }
+.user.ops    { color: #5ab0ff; }
+.user.field  { color: #5abf8a; }
+.user.noise  { color: #a070d0; }
+.user.critic { color: #d08040; }
+.user.anon   { color: #607080; }
+.time { color: #384858; font-size: 10px; }
+.post-text { color: #9ab8cc; line-height: 1.5; }
+.reply {
+  margin-left: 18px;
+  padding: 5px 0 3px;
+  border-left: 2px solid #1e2836;
+  padding-left: 10px;
+  margin-top: 4px;
+}
+.reply .post-text { color: #7090a8; }
+</style>
+</head>
+<body>
+<div id="container">
+<h3>▤ Mission Feed</h3>
+<div id="feed"></div>
+</div>
+
+<script>
+
+const params  = new URLSearchParams(window.location.search);
+const chapter = Number(params.get('chapter')) || 1;
+
+// ============================================================
+//  DATE SYSTEM — fixed UTC dates per chapter band
+// ============================================================
+const CHAPTER_DATES = {
+  1:  'Mar 14 2026 22:11:00 UTC',
+  2:  'Mar 15 2026 09:15:00 UTC',
+  3:  'Mar 28 2026 14:00:00 UTC',
+  4:  'Apr 22 2026 06:30:00 UTC',
+  5:  'May 12 2026 18:00:00 UTC',
+  6:  'Jun 11 2026 10:00:00 UTC',
+  7:  'Jul 22 2032 07:00:00 UTC',
+  8:  'Aug 06 2032 14:30:00 UTC',
+  9:  'Aug 20 2032 08:00:00 UTC',
+  10: 'Sep 09 2032 11:30:00 UTC',
+  11: 'Sep 29 2032 06:00:00 UTC',
+  12: 'Oct 19 2032 09:00:00 UTC',
+  13: 'Nov 08 2032 14:00:00 UTC',
+  14: 'Nov 28 2032 07:30:00 UTC',
+  15: 'Dec 18 2032 10:00:00 UTC',
+  16: 'Jan 07 2033 08:00:00 UTC',
+  17: 'Jan 27 2033 11:00:00 UTC',
+  18: 'Feb 16 2033 09:30:00 UTC',
+  19: 'Mar 08 2033 07:00:00 UTC',
+  20: 'Mar 28 2033 13:00:00 UTC',
+  21: 'Apr 17 2033 08:00:00 UTC',
+  22: 'May 07 2033 10:00:00 UTC',
+  23: 'May 27 2033 06:30:00 UTC',
+  24: 'Jun 16 2033 09:00:00 UTC',
+  25: 'Jul 06 2033 07:00:00 UTC',
+  26: 'Jul 26 2033 11:00:00 UTC',
+};
+
+function getBaseDate(ch) {
+  // find nearest at or below
+  for (let k = ch; k >= 1; k--) {
+    if (CHAPTER_DATES[k]) return new Date(CHAPTER_DATES[k]);
+  }
+  return new Date('Jul 22 2032 07:00:00 UTC');
+}
+
+let clock = getBaseDate(chapter);
+
+function advance(sec) { clock = new Date(clock.getTime() + sec * 1000); }
+
+function stamp() {
+  const mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const d = clock;
+  const hh = String(d.getUTCHours()).padStart(2,'0');
+  const mm = String(d.getUTCMinutes()).padStart(2,'0');
+  const ss = String(d.getUTCSeconds()).padStart(2,'0');
+  return `${mo[d.getUTCMonth()]} ${d.getUTCDate()} ${d.getUTCFullYear()}  ${hh}:${mm}:${ss} UTC`;
+}
+
+// ============================================================
+//  CAST — each user has a role, voice, and topic focus
+// ============================================================
+const CAST = {
+  HeliosOps: {
+    cls: 'ops',
+    role: 'ops',    // official-sounding, terse
+  },
+  FieldTech87: {
+    cls: 'field',
+    role: 'field',  // technical, specific, measured
+  },
+  regolithrat: {
+    cls: 'field',
+    role: 'field',
+  },
+  deltaVghost: {
+    cls: 'field',
+    role: 'field',
+  },
+  orbitalwatch: {
+    cls: 'ops',
+    role: 'ops',
+  },
+  gravel_eater: {
+    cls: 'noise',
+    role: 'noise',  // loud, suspicious, trailing-off
+  },
+  oxide_99: {
+    cls: 'critic',
+    role: 'critic', // lowercase, direct, a bit contemptuous
+  },
+  junkyardAI: {
+    cls: 'noise',
+    role: 'noise',
+  },
+  lateburner: {
+    cls: 'critic',
+    role: 'critic',
+  },
+  hotloop: {
+    cls: 'anon',
+    role: 'anon',   // brief, cryptic, sometimes just one word
+  },
+  voidmargin: {
+    cls: 'anon',
+    role: 'anon',
+  },
+  craterwatch: {
+    cls: 'field',
+    role: 'field',
+  },
+};
+
+// ============================================================
+//  TEXT POOLS — organized by chapter era and voice
+// ============================================================
+
+// Early chapters (1-6) — pre-mission, Earth-side, registration hype
+const ERA_EARLY = {
+  ops: [
+    'Registration window closes in 48 hours. Seven confirmed starters.',
+    'LCI has verified vehicle certification for three teams. Others pending.',
+    'Route filing deadline extended. No official comment on reason.',
+    'Helios Dynamics vehicle weight confirmed at 4.2 metric tons. Largest certified to date.',
+    'Russell Crater hub capacity flagged as potential bottleneck by LCI logistics review.',
+    'Press credential pool now open. Twelve embedded slots for competition duration.',
+    'LCI confirms independent verification team will shadow lead vehicle for first leg.',
+    'Descent window confirmed. No anomalies in approach corridor.',
+  ],
+  field: [
+    'Anyone actually looked at the northern section power budget? Numbers do not work on solar alone.',
+    'Helios canopy deployment in one-sixth g is going to be interesting to watch.',
+    'Thermal cycling stress on that wheel design is going to matter a lot more than their spec sheet implies.',
+    'The route through Janssen is aggressive. Fine on paper. Regolith density maps there are old.',
+    'Hub infrastructure at Russell looks capable on the manifest. Have not seen the actual hardware.',
+    'Three teams filed route plans with identical waypoint spacing. That is not a coincidence.',
+    'Vehicle mass vs power budget on the solar-dependent designs leaves almost no margin past 60 degrees.',
+    'Watching the resupply logistics filings. Two teams are counting on infrastructure that does not exist yet.',
+  ],
+  noise: [
+    'Half these teams are not going to make the start line and everyone knows it.',
+    'The registration list reads like a wish list not a competitor field...',
+    'That canopy size is going to be a liability not an asset and nobody wants to say it.',
+    'Whole thing feels rushed. LCI moved the timeline up and the teams are not ready.',
+    'Someone is going to get to the northern section and just stop. Mark it.',
+    'That debris report from the descent approach is not resolved. Nobody is talking about it.',
+    'Registration fees alone tell you who is serious and who is just holding a slot...',
+  ],
+  critic: [
+    'the route geometry past hermite has never been done in winter solar conditions. full stop.',
+    'certification does not mean capable. it means the paperwork cleared.',
+    'anyone praising the helios design has not looked at the thermal load in shadow transit.',
+    'the billion dollar prize is real. the preparation for half the field is not.',
+    'resupply math only works if the hub stays up. nobody has stress-tested that assumption.',
+    'lci extended the filing deadline because two of the serious teams were not ready. obvious.',
+  ],
+  anon: [
+    'watching.',
+    'northern section.',
+    'debris report still open.',
+    'three teams. not ten.',
+    'solar math.',
+    'hub capacity.',
+  ],
+};
+
+// Mid chapters (7-14) — active competition, legs 1-2, northern approach
+const ERA_MID = {
+  ops: [
+    'Helios vehicle confirmed operational at first waypoint. Speed nominal.',
+    'Route deviation logged near Janssen approach. LCI notified. Reviewing terrain data.',
+    'Crooks Crater emergency station reporting minimal operational status.',
+    'Resupply relay from Russell Crater confirmed. Two vehicles in active transit.',
+    'Shadow transit window for northern corridor opens in 72 hours. Teams adjusting schedules.',
+    'LCI tracking update: three vehicles confirmed active. Two in maintenance hold.',
+    'Northern section scout timing disrupted by shadow persistence. Recovery in progress.',
+    'Helios thermal systems reporting elevated but within spec. Monitoring.',
+    'Leg two terrain report flagged for updated density mapping. Previous data insufficient.',
+  ],
+  field: [
+    'Micro-fracture propagation on wheel assemblies moving faster than the predictive model said it would.',
+    'Shadow persistence at this latitude is messing with the scout network timing in ways I did not expect.',
+    'The Crooks Crater station issue is going to matter. Distance from Russell is already near the limit.',
+    'Helios radiators running warm but the reactor gives them headroom the solar designs simply do not have.',
+    'Terrain on leg two looks stable from orbit. On the ground the density is inconsistent. Big difference.',
+    'The energy margin calculation for the northern section assumes ideal solar geometry. It is not ideal.',
+    'Two teams are already operating at less than sixty percent of planned reserve capacity. This early.',
+    'Janssen deviation adds distance. May not seem like much. Compounds over the full route length.',
+    'The hub is running three parallel resupply operations. It was designed for one at a time.',
+    'Nav confidence dropping in the shadow zones. Not enough to lose position. Enough to lose time.',
+  ],
+  noise: [
+    'That wheel failure was not a surprise to anyone who read the spec sheet carefully...',
+    'Crooks Crater barely operational and we are not even at the hard part yet.',
+    'The deviation near Janssen is not a small thing. That adds up over distance.',
+    'Something is wrong with the resupply timing and the official updates are not saying what.',
+    'Reactor-driven vehicle does not care about solar geometry. The others are already falling behind...',
+    'Hub overload is going to happen. The manifest was not designed for this many active teams.',
+    'Northern corridor access is going to sort out who actually planned this and who just registered.',
+    'Two teams are already close to yellow on reserves and nobody is reporting it officially.',
+    'The scout network disruption is bigger than the update made it sound...',
+  ],
+  critic: [
+    'wheel assemblies running faster fracture rates than modeled. this was predictable.',
+    'crooks station being barely operational at this stage is a planning failure not a surprise.',
+    'the terrain data for leg two was three years old. someone signed off on that.',
+    'energy margins going yellow this early means the route profile was optimistic from the start.',
+    'official updates are running about six hours behind what is actually happening on the surface.',
+    'shadow transit timing error is not a scout network issue. it is a route planning issue.',
+    'hub was not designed for parallel resupply. this is going to become a problem.',
+    'nav confidence in shadow zones was in the risk register. nobody budgeted extra time for it.',
+  ],
+  anon: [
+    'crooks.',
+    'reserves.',
+    'timing is off.',
+    'yellow already.',
+    'hub overload coming.',
+    'deviation adds up.',
+    'shadow zone.',
+    'three left.',
+  ],
+};
+
+// Late chapters (15-26) — endgame, polar approach, final legs
+const ERA_LATE = {
+  ops: [
+    'Helios vehicle confirmed at polar approach corridor. All systems nominal.',
+    'Permanently shadowed region transit window confirmed. Reactor power verified.',
+    'LCI final verification team in position at expected finish coordinates.',
+    'Two vehicles confirmed retired from competition. One in emergency hold.',
+    'Hermite access confirmed viable. Infrastructure survey team reporting.',
+    'Final leg route verified against LCI certification requirements.',
+    'Thermal plume data from reactor operation near PSR under review by LCI science team.',
+    'Competition clock running. Estimated completion window updated to 72 hours.',
+    'Ground contact verification protocol active. Final circumnavigation confirmation pending.',
+  ],
+  field: [
+    'Thermal plume from the reactor at this proximity to the shadowed region is going to show up in the science data.',
+    'The vehicle that gets through Hermite access actually changes the infrastructure calculus for everything that comes after.',
+    'Solar-dependent teams have been eliminated not by failure but by geometry. Predictable in hindsight.',
+    'Final leg terrain is well-mapped but the energy situation for anything still on solar is terminal.',
+    'Permanently shadowed region approach is the part of the route that was never really tested before this.',
+    'What the reactor design proved is not that nuclear is faster. It proved that dependency is the constraint.',
+    'Hub has been running continuous operations for months. Degradation is showing in the maintenance reports.',
+    'Three hundred kilometers from completion and the margin situation is still tighter than it should be.',
+    'The route that looked impossible twelve months ago is going to have a finish. That matters regardless of who crosses.',
+  ],
+  noise: [
+    'The reactor plume data near PSR is not something LCI is going to be able to ignore...',
+    'Finish line is there but two of the remaining teams are not going to make it and everyone sees it.',
+    'Hermite access working means the northern hub project becomes real. That is the actual story.',
+    'What happens to the infrastructure after the competition closes is more important than who wins.',
+    'The science team flagging the thermal data is the beginning of a longer conversation...',
+    'Twelve months and the field went from thirty registrations to one vehicle at the polar approach.',
+    'Everyone who said the route was impossible is very quiet right now...',
+    'The billion is almost beside the point at this stage. The route is what mattered.',
+  ],
+  critic: [
+    'thermal plume near permanently shadowed region. lci will have to address that in the debrief.',
+    'solar-dependent vehicle elimination was not a failure. it was a design constraint becoming a fact.',
+    'the infrastructure that gets left behind is worth more than the prize money. nobody is writing about that.',
+    'hub degradation after sustained operations was in every long-range model. nobody planned maintenance.',
+    'three hundred kilometers from finish and the margin is tighter than it should be. this was a close thing.',
+    'reactor design won by not needing to solve the shadow problem. elegant or obvious depending on your position.',
+    'the route will be repeated. the question is by whom and with what infrastructure already in place.',
+    'what gets certified after this changes everything downstream. that is the real competition result.',
+  ],
+  anon: [
+    'hermite.',
+    'thermal plume.',
+    'one vehicle.',
+    'infrastructure remains.',
+    'close thing.',
+    'shadow transit.',
+    'finish.',
+    'what comes next.',
+  ],
+};
+
+function getPool() {
+  if (chapter <= 6)  return ERA_EARLY;
+  if (chapter <= 14) return ERA_MID;
+  return ERA_LATE;
+}
+
+// ============================================================
+//  POST GENERATION
+// ============================================================
+const usedTexts = new Set();
+
+function pickFresh(arr) {
+  const unused = arr.filter(t => !usedTexts.has(t));
+  const pool = unused.length > 0 ? unused : arr; // reset if exhausted
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+  usedTexts.add(pick);
+  return pick;
+}
+
+function pickUser(excludeUser) {
+  const names = Object.keys(CAST).filter(u => u !== excludeUser);
+  return names[Math.floor(Math.random() * names.length)];
+}
+
+function applyVoice(text, role) {
+  if (role === 'critic')  return text.toLowerCase().replace(/\.$/, '');
+  if (role === 'noise')   return text.endsWith('...') ? text : text + (Math.random() < 0.5 ? '...' : '');
+  if (role === 'anon')    return text.toLowerCase();
+  if (role === 'ops')     return text;
+  return text;
+}
+
+// noise users have higher chance of replying
+const NOISE_USERS  = ['gravel_eater','junkyardAI','oxide_99','lateburner','hotloop','voidmargin'];
+const FIELD_USERS  = ['FieldTech87','regolithrat','deltaVghost','craterwatch'];
+const OPS_USERS    = ['HeliosOps','orbitalwatch'];
+
+function weightedUser(exclude) {
+  // slight bias: noise users post more
+  const roll = Math.random();
+  let pool;
+  if (roll < 0.35)      pool = NOISE_USERS;
+  else if (roll < 0.65) pool = FIELD_USERS;
+  else                  pool = OPS_USERS;
+  const filtered = pool.filter(u => u !== exclude);
+  if (!filtered.length) return pickUser(exclude);
+  return filtered[Math.floor(Math.random() * filtered.length)];
+}
+
+function createPost() {
+  const pool = getPool();
+  const user = weightedUser(null);
+  const role = CAST[user]?.role || 'anon';
+
+  // pick text from matching role pool, fall back to noise
+  const textPool = pool[role] || pool.noise;
+  const rawText = pickFresh(textPool);
+  const text = applyVoice(rawText, role);
+
+  const post = { user, cls: CAST[user]?.cls || 'anon', text, replies: [] };
+
+  // reply probability
+  const replyChance = role === 'ops' ? 0.5 : 0.72;
+  if (Math.random() < replyChance) {
+    const replyUser = weightedUser(user);
+    const replyRole = CAST[replyUser]?.role || 'anon';
+    const replyPool = pool[replyRole] || pool.noise;
+    const replyText = applyVoice(pickFresh(replyPool), replyRole);
+    post.replies.push({ user: replyUser, cls: CAST[replyUser]?.cls || 'anon', text: replyText });
+
+    // occasional second reply
+    if (Math.random() < 0.35) {
+      const ru2 = weightedUser(replyUser);
+      const rr2 = CAST[ru2]?.role || 'anon';
+      const rp2 = pool[rr2] || pool.noise;
+      post.replies.push({ user: ru2, cls: CAST[ru2]?.cls || 'anon', text: applyVoice(pickFresh(rp2), rr2) });
+    }
+  }
+
+  return post;
+}
+
+// ============================================================
+//  RENDER
+// ============================================================
+function render(post) {
+  const feed = document.getElementById('feed');
+  if (feed.children.length > 40) feed.removeChild(feed.lastChild);
+
+  const div = document.createElement('div');
+  div.className = 'post';
+  div.innerHTML = `
+    <div class="post-header">
+      <span class="user ${post.cls}">@${post.user}</span>
+      <span class="time">${stamp()}</span>
+    </div>
+    <div class="post-text">${post.text}</div>
+  `;
+
+  feed.prepend(div);
+
+  post.replies.forEach((r, i) => {
+    setTimeout(() => {
+      advance(15 + Math.floor(Math.random() * 25));
+      const rep = document.createElement('div');
+      rep.className = 'reply';
+      rep.innerHTML = `
+        <div class="post-header">
+          <span class="user ${r.cls}">@${r.user}</span>
+          <span class="time">${stamp()}</span>
+        </div>
+        <div class="post-text">${r.text}</div>
+      `;
+      div.appendChild(rep);
+    }, 1200 + i * 2200);
+  });
+}
+
+// ============================================================
+//  LOOP
+// ============================================================
+function start() {
+  // seed 4 initial posts with slightly staggered times
+  for (let i = 0; i < 4; i++) {
+    advance(30 + Math.floor(Math.random() * 40));
+    render(createPost());
+  }
+  // new post every 5-8 seconds
+  let interval = 5500;
+  function post() {
+    advance(45 + Math.floor(Math.random() * 60));
+    render(createPost());
+    interval = 5000 + Math.random() * 3000;
+    setTimeout(post, interval);
+  }
+  setTimeout(post, interval);
+}
+
+start();
+</script>
+</body>
+</html>
