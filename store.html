@@ -2,20 +2,33 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Store — Around the Moon in a Day</title>
+<title>Store</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  body { background:#000; color:#fff; font-family:monospace; text-align:center; padding-top:60px; margin:0; }
+  .label { color:#555; font-size:.7rem; letter-spacing:.14em; text-transform:uppercase; margin-bottom:6px; }
+  h2 { color:#eee; font-size:1rem; font-weight:normal; margin-bottom:4px; }
+  .author { color:#444; font-size:.7rem; margin-bottom:32px; }
+  .prices { display:flex; gap:10px; justify-content:center; margin-bottom:20px; }
+  .prices a {
+    padding:12px 20px; border:1px solid #333; color:#eee;
+    text-decoration:none; font-size:.95rem;
+    transition:border-color .15s;
+  }
+  .prices a:hover { border-color:#888; }
+  .note { color:#333; font-size:.65rem; line-height:1.6; }
+</style>
 </head>
-<body style="background:black;color:white;font-family:monospace;text-align:center;padding-top:80px">
-<h2>Around the Moon in a Day</h2>
-<p style="color:#888;font-size:.85rem;margin-bottom:40px">Pre-Release eBook — PDF</p>
-<a href="/buy/buy.html"
-   style="display:inline-block;padding:14px 40px;border:1px solid #444;color:white;text-decoration:none;font-size:1rem"
-   onmouseover="this.style.borderColor='#aaa'" onmouseout="this.style.borderColor='#444'">
-  Buy eBook
-</a>
-<p style="color:#444;font-size:.75rem;margin-top:40px">
-  PDF delivered after payment.<br>
-  File: e-book Around the Moon in a Day Pre-release.pdf
-</p>
+<body>
+  <div class="label">Launch Edition — PDF</div>
+  <h2>Around the Moon in a Day</h2>
+  <div class="author">Michael Jayne</div>
+  <div class="label">Pay what feels right</div>
+  <div class="prices">
+    <a href="https://buy.stripe.com/4gM5kxgoKe8q6HG0mXcjS00" target="_blank">$3</a>
+    <a href="https://buy.stripe.com/dRm4gt8Wid4ac20BTtcjS01" target="_blank">$5</a>
+    <a href="https://buy.stripe.com/9B6fZb4G29SaSDC7PpcjS02" target="_blank">$10</a>
+  </div>
+  <div class="note">PDF delivered after payment.<br>Early buyers receive free updated edition.</div>
 </body>
 </html>
