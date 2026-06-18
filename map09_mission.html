@@ -97,14 +97,14 @@ map.dragging.disable();
 // ✅ START (label only)
 L.marker(pts[0],{opacity:0}).addTo(map)
 .bindTooltip(
-"HELBERG CRATER<br>UTC: 07/26/2032 06:00<br>MLLST: 09:49<br>RLLST: 07:00",
+"HELBERG CRATER<br>UTC: 07/26/2032 06:00<br>Distance: 2175 km<br>MLLST: 09:49 RLLST: 07:00",
 {permanent:true,offset:[120,-40],className:"map-label"}
 );
 
 // ✅ END (rover only)
 L.marker(pts[pts.length-1],{icon:roverIcon()}).addTo(map)
 .bindTooltip(
-"CROOKS CRATER<br>Distance: 2175 km Speed: 18 km/h<br>MLLST: 13:55 RLLST: 10:30",
+"CROOKS CRATER<br>Speed: 18 km/h<br>UTC: 08/01/2032, 06:45<br>MLLST: 13:55 RLLST: 10:30",
 {permanent:true,offset:[-140,-40],className:"map-label"}
 );
 
