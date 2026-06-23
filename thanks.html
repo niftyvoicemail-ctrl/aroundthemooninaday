@@ -32,32 +32,43 @@
     font-weight: normal;
     color: #eee;
     line-height: 1.2;
-    margin-bottom: 24px;
+    margin-bottom: 16px;
+  }
+  .edition {
+    font-size: .8rem;
+    color: #888;
+    margin-bottom: 20px;
+    letter-spacing: .05em;
   }
   .desc {
     font-size: .9rem;
     color: #999;
     line-height: 1.7;
-    margin-bottom: 32px;
+    margin-bottom: 28px;
   }
   .download {
-    display: inline-block;
-    padding: 16px 40px;
+    display: block;
+    padding: 14px;
     background: #111;
     border: 1px solid #2a2a2a;
     color: #eee;
-    font-family: Georgia, serif;
-    font-size: 1rem;
     text-decoration: none;
+    margin-bottom: 12px;
     transition: background .15s, border-color .15s;
-    margin-bottom: 24px;
   }
   .download:hover { background: #1a1a1a; border-color: #555; }
+  .label {
+    font-size: .75rem;
+    color: #666;
+    display: block;
+    margin-top: 4px;
+  }
   .note {
     font-family: 'Courier New', monospace;
     font-size: .68rem;
     color: #3a3a3a;
     line-height: 1.5;
+    margin-top: 16px;
   }
 </style>
 </head>
@@ -65,9 +76,27 @@
 <div class="card">
   <div class="eyebrow">Payment Successful</div>
   <h1>Thank You</h1>
-  <p class="desc">Your purchase of <em>Around the Moon in a Day</em> is confirmed. Click below to download your copy.</p>
-  <a class="download" href="/around-the-moon-in-a-day.pdf" download>Download PDF</a>
-  <div class="note">If your download doesn't start, check your email for a copy of this link.<br>Early buyers receive a free updated edition once corrections are made.</div>
+  <div class="edition">First Edition</div>
+
+  <p class="desc">
+    Your purchase of <em>Around the Moon in a Day</em> is complete.
+    Download your copy below.
+  </p>
+
+  <a class="download" href="/around-the-moon-in-a-day - JayneM.epub" download>
+    Download EPUB
+    <span class="label">Recommended for phones, tablets, and eReaders</span>
+  </a>
+
+  <a class="download" href="/around-the-moon-in-a-day.pdf" download>
+    Download PDF
+    <span class="label">Best for desktop and printing</span>
+  </a>
+
+  <div class="note">
+    If your download doesn't start, check your email for a copy of this link.<br>
+    First edition buyers receive free updates with future revisions.
+  </div>
 </div>
 </body>
 </html>
