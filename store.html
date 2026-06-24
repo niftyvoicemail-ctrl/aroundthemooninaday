@@ -16,7 +16,16 @@
     transition:border-color .15s;
   }
   .prices a:hover { border-color:#888; }
-  .note { color:#333; font-size:.65rem; line-height:1.6; }
+  .note { color:#333; font-size:.65rem; line-height:1.6; margin-bottom:40px; }
+  .divider { border:none; border-top:1px solid #1a1a1a; width:60%; margin:0 auto 32px; }
+  .retailers { display:flex; flex-direction:column; gap:10px; align-items:center; margin-bottom:20px; }
+  .retailers a {
+    padding:10px 24px; border:1px solid #2a2a2a; color:#aaa;
+    text-decoration:none; font-size:.8rem; letter-spacing:.08em;
+    width:220px;
+    transition:border-color .15s, color .15s;
+  }
+  .retailers a:hover { border-color:#666; color:#eee; }
 </style>
 </head>
 <body>
@@ -30,5 +39,13 @@
     <a href="https://buy.stripe.com/9B6fZb4G29SaSDC7PpcjS02" target="_blank">$10</a>
   </div>
   <div class="note">PDF delivered after payment.<br>Early buyers receive free updated edition.</div>
+
+  <hr class="divider">
+
+  <div class="label">Also available</div>
+  <div class="retailers">
+    <a href="https://www.amazon.com/dp/B0H6KJGKZ2" target="_blank">Paperback now on Amazon</a>
+    <!-- future: hardback, international, etc. -->
+  </div>
 </body>
 </html>
