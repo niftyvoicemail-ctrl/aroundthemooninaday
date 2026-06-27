@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+=<!DOCTYPE html>
 <html>
 <head>
 <title>ATN Surface Operations Cartography</title>
@@ -195,7 +195,7 @@ window.addEventListener("load", ()=>{
   // pick the larger of x/y fill zooms
   const zx = Math.log2(cw / W);
   const zy = Math.log2(ch / H);
-  const fillZoom = Math.max(zx, zy);
+  const fillZoom = Math.min(zx, zy);
 
   // Center of the image in map coords
   const center = L.latLng(H/2, W/2);
