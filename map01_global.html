@@ -185,21 +185,15 @@ function lockMap(){
 window.addEventListener("load", ()=>{
   map.invalidateSize({animate:false});
 
-  // Compute fill zoom manually
+  // Fit to full width — moon image is 2:1, always wider than container
+  // so fitting width guarantees no left/right black bars
   const cw = map.getContainer().clientWidth;
-  const ch = map.getContainer().clientHeight;
+  const fillZoom = Math.log2(cw / W);
 
-  // Leaflet CRS.Simple: at zoom 0, 1 pixel = 1 map unit
-  // We need to find zoom where image fills container
-  // image is W x H map units
-  // at zoom z: W * 2^z = cw  → z = log2(cw/W)
-  // pick the larger of x/y fill zooms
-  const zx = Math.log2(cw / W);
-  const zy = Math.log2(ch / H);
-  const fillZoom = zx;
-
-  // Center of the image in map coords
-  const center = L.latLng(H/2, W/2);
+  // Center on equator (lat=0 → pixel y = H/2 in our CRS)
+  // Shift view slightly north to show the route better (route sits ~10-30°N)
+  const centerLat = geo(10, 0).lat; // 10°N in pixel coords
+  const center = L.latLng(centerLat, W/2);
   map.setView(center, fillZoom, {animate:false});
 
   setTimeout(lockMap, 150);
