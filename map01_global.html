@@ -7,44 +7,38 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
-body {
+html, body {
+  width: 100%;
+  height: 100%;
   background: #000;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  padding: 12px;
-  font-family: monospace;
+  align-items: stretch;
+  justify-content: stretch;
 }
 
-/* ── OUTER FRAME ── */
+/* ── OUTER FRAME fills viewport ── */
 #frame {
   border: 1px solid #888;
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 1400px;
+  height: 100%;
+  font-family: monospace;
 }
 
 /* ── HEADER ── */
 #header {
+  flex-shrink: 0;
   background: #0a0a0a;
   border-bottom: 1px solid #555;
-  padding: 8px 14px;
+  padding: 7px 14px;
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
 }
 
-#header-left {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
 #atn-title {
-  font-size: 18px;
+  font-size: 17px;
   font-weight: bold;
   letter-spacing: 3px;
   color: #fff;
@@ -54,31 +48,35 @@ body {
   font-size: 9px;
   letter-spacing: 2px;
   color: #aaa;
+  margin-top: 2px;
 }
 
 #map-id {
-  font-size: 13px;
+  font-size: 12px;
   letter-spacing: 2px;
   color: #ccc;
 }
 
-/* ── MAP ── */
+/* ── MAP fills all remaining space ── */
 #map {
+  flex: 1 1 0;
+  min-height: 0;
   width: 100%;
-  height: 70vh;
   background: #000;
   position: relative;
+  overflow: hidden;
 }
 
-/* kill leaflet UI */
-.leaflet-control-zoom { display: none !important; }
-.leaflet-control-attribution { display: none !important; }
+/* kill ALL leaflet UI chrome */
+.leaflet-control-zoom,
+.leaflet-control-attribution,
+.leaflet-control-container { display: none !important; }
 
 /* ── NORTH ARROW ── */
 #north-arrow {
   position: absolute;
-  top: 14px;
-  right: 14px;
+  top: 12px;
+  right: 12px;
   z-index: 1000;
   display: flex;
   flex-direction: column;
@@ -87,22 +85,23 @@ body {
   pointer-events: none;
 }
 
-#north-arrow svg { display: block; }
-
 #north-label {
   font-size: 9px;
   color: #fff;
   letter-spacing: 1px;
+  font-family: monospace;
 }
 
 /* ── FOOTER ── */
 #footer {
+  flex-shrink: 0;
   background: #0a0a0a;
   border-top: 1px solid #555;
-  padding: 6px 14px;
+  padding: 5px 14px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  font-family: monospace;
 }
 
 #footer-left {
@@ -123,31 +122,25 @@ body {
 
 <div id="frame">
 
-  <!-- HEADER -->
   <div id="header">
-    <div id="header-left">
+    <div>
       <div id="atn-title">AURELIA TRAVERSE NETWORK</div>
       <div id="atn-subtitle">SURFACE OPERATIONS CARTOGRAPHY</div>
     </div>
     <div id="map-id">ATN-GLOBAL-01</div>
   </div>
 
-  <!-- MAP -->
   <div id="map">
-
-    <!-- NORTH ARROW -->
     <div id="north-arrow">
       <svg width="18" height="28" viewBox="0 0 18 28">
         <polygon points="9,2 14,16 9,13 4,16" fill="#fff"/>
-        <polygon points="9,26 14,12 9,15 4,12" fill="#555"/>
+        <polygon points="9,26 14,12 9,15 4,12" fill="#444"/>
         <line x1="9" y1="2" x2="9" y2="26" stroke="#fff" stroke-width="0.5"/>
       </svg>
       <div id="north-label">N</div>
     </div>
-
   </div>
 
-  <!-- FOOTER -->
   <div id="footer">
     <div id="footer-left">HELIOS DYNAMICS · FULL TRAVERSE NETWORK</div>
     <div id="footer-right">LUNAR RECONNAISSANCE ORBITER · NASA/GSFC/ASU</div>
@@ -167,18 +160,18 @@ const CRS = L.extend({}, L.CRS.Simple, {
 
 const map = L.map("map", {
   crs: CRS,
-  minZoom: -3,
-  maxZoom: 2,
   zoomControl: false,
-  attributionControl: false
+  attributionControl: false,
+  minZoom: -8,
+  maxZoom: -8
 });
 
 const bounds = [[0,0],[H,W]];
 L.imageOverlay("moon.jpg", bounds).addTo(map);
-map.fitBounds(bounds);
+map.fitBounds(bounds, {animate:false});
 
-// lock zoom and interaction after fit
-map.once("moveend", ()=>{
+// Hard-lock everything after fit
+setTimeout(()=>{
   const z = map.getZoom();
   map.setMinZoom(z);
   map.setMaxZoom(z);
@@ -188,7 +181,7 @@ map.once("moveend", ()=>{
   map.scrollWheelZoom.disable();
   map.boxZoom.disable();
   map.keyboard.disable();
-});
+}, 100);
 
 // geo → pixel
 function geo(lat, lon){
@@ -197,28 +190,26 @@ function geo(lat, lon){
   return L.latLng(H-y, x);
 }
 
-// ── GRATICULE (30° grid, faint white) ──
-const GRAT_STYLE = { color:"#ffffff", weight:0.5, opacity:0.18, interactive:false };
+// ── GRATICULE 30° brighter white ──
+const GRAT = { color:"#ffffff", weight:0.8, opacity:0.35, interactive:false };
 
-// latitude lines every 30° (skip poles)
 for(let lat = -60; lat <= 60; lat += 30){
-  if(lat === 0) continue; // equator drawn separately
+  if(lat === 0) continue;
   let pts = [];
   for(let lon = -180; lon <= 180; lon += 2) pts.push(geo(lat, lon));
-  L.polyline(pts, GRAT_STYLE).addTo(map);
+  L.polyline(pts, GRAT).addTo(map);
 }
 
-// longitude lines every 30°
 for(let lon = -180; lon <= 180; lon += 30){
   let pts = [];
-  for(let lat = -88; lat <= 88; lat += 2) pts.push(geo(lat, lon));
-  L.polyline(pts, GRAT_STYLE).addTo(map);
+  for(let lat = -89; lat <= 89; lat += 2) pts.push(geo(lat, lon));
+  L.polyline(pts, GRAT).addTo(map);
 }
 
-// ── EQUATOR (heavier cyan — named feature) ──
+// ── EQUATOR heavier cyan ──
 let eq = [];
 for(let lon = -180; lon <= 180; lon += 2) eq.push(geo(0, lon));
-L.polyline(eq, { color:"#00ffff", weight:2, opacity:0.6, interactive:false }).addTo(map);
+L.polyline(eq, { color:"#00ffff", weight:2, opacity:0.7, interactive:false }).addTo(map);
 
 // ── ROUTES ──
 const routes = [
