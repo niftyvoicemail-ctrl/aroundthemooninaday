@@ -30,7 +30,7 @@ html, body {
   padding: 7px 14px;
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: center;
 }
 
 #atn-title {
@@ -51,7 +51,6 @@ html, body {
   font-size: 12px;
   letter-spacing: 2px;
   color: #ccc;
-  align-self: center;
 }
 
 #map {
@@ -59,7 +58,6 @@ html, body {
   min-height: 0;
   width: 100%;
   position: relative;
-  overflow: hidden;
   background: #000;
 }
 
@@ -96,17 +94,8 @@ html, body {
   align-items: center;
 }
 
-#footer-left {
-  font-size: 9px;
-  letter-spacing: 1px;
-  color: #aaa;
-}
-
-#footer-right {
-  font-size: 9px;
-  letter-spacing: 1px;
-  color: #666;
-}
+#footer-left { font-size: 9px; letter-spacing: 1px; color: #aaa; }
+#footer-right { font-size: 9px; letter-spacing: 1px; color: #666; }
 
 </style>
 </head>
@@ -153,16 +142,31 @@ const map = L.map("map", {
   zoomControl: false,
   attributionControl: false,
   minZoom: -8,
-  maxZoom: 4
+  maxZoom: 4,
+  preferCanvas: true
 });
 
-const bounds = [[0,0],[H,W]];
-L.imageOverlay("moon.jpg", bounds).addTo(map);
+L.imageOverlay("moon.jpg", [[0,0],[H,W]]).addTo(map);
 
 function geo(lat, lon){
   const x = (lon+180)/360*W;
   const y = (90-lat)/180*H;
   return L.latLng(H-y, x);
+}
+
+function fitFill(){
+  // Compute zoom that makes image fill the container with no padding
+  const container = map.getContainer();
+  const cw = container.clientWidth;
+  const ch = container.clientHeight;
+  // image aspect W:H, container aspect cw:ch
+  // fitBounds pads; instead compute zoom directly
+  const scaleX = cw / W;
+  const scaleY = ch / H;
+  const scale = Math.max(scaleX, scaleY); // FILL, not fit
+  const z = map.getZoom() + Math.log2(scale * (W / cw));
+  // Simpler: just use fitBounds with no padding then nudge
+  map.fitBounds([[0,0],[H,W]], {animate:false, padding:[0,0]});
 }
 
 function lockMap(){
@@ -177,11 +181,27 @@ function lockMap(){
   map.keyboard.disable();
 }
 
-// ── Wait for container to have real dimensions, then fit ──
 window.addEventListener("load", ()=>{
-  map.invalidateSize();
-  map.fitBounds(bounds, {animate:false, padding:[0,0]});
-  setTimeout(lockMap, 200);
+  map.invalidateSize({animate:false});
+
+  // Compute fill zoom manually
+  const cw = map.getContainer().clientWidth;
+  const ch = map.getContainer().clientHeight;
+
+  // Leaflet CRS.Simple: at zoom 0, 1 pixel = 1 map unit
+  // We need to find zoom where image fills container
+  // image is W x H map units
+  // at zoom z: W * 2^z = cw  → z = log2(cw/W)
+  // pick the larger of x/y fill zooms
+  const zx = Math.log2(cw / W);
+  const zy = Math.log2(ch / H);
+  const fillZoom = Math.max(zx, zy);
+
+  // Center of the image in map coords
+  const center = L.latLng(H/2, W/2);
+  map.setView(center, fillZoom, {animate:false});
+
+  setTimeout(lockMap, 150);
 });
 
 // ── GRATICULE 30° ──
@@ -193,7 +213,6 @@ for(let lat = -60; lat <= 60; lat += 30){
   for(let lon = -180; lon <= 180; lon += 2) pts.push(geo(lat, lon));
   L.polyline(pts, GRAT).addTo(map);
 }
-
 for(let lon = -180; lon <= 180; lon += 30){
   let pts = [];
   for(let lat = -89; lat <= 89; lat += 2) pts.push(geo(lat, lon));
