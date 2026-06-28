@@ -12,19 +12,20 @@ html, body {
   height: 100%;
   background: #000;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  font-family: monospace;
 }
 
-/* Frame hugs the map — sized by JS to match image */
 #frame {
   border: 1px solid #888;
-  display: inline-flex;
+  display: flex;
   flex-direction: column;
-  font-family: monospace;
-  flex-shrink: 0;
-  position: relative;
+  /* Fill width, let height follow */
+  width: calc(100% - 2px);
+  max-width: calc((100vh - 90px) * 2); /* cap width so 2:1 fits vertically */
 }
 
 #header {
@@ -55,14 +56,16 @@ html, body {
   font-size: 12px;
   letter-spacing: 2px;
   color: #ccc;
-  align-self: center;
 }
 
-/* Map div sized explicitly by JS */
+/* Map fills frame width, height locked to 2:1 via aspect-ratio */
 #map {
+  width: 100%;
+  aspect-ratio: 2 / 1;
   position: relative;
   background: #000;
   display: block;
+  overflow: hidden;
 }
 
 .leaflet-control-zoom,
@@ -136,34 +139,10 @@ html, body {
 
 const W = 8192;
 const H = 4096;
-const HEADER_H = 52; // approx header+footer height in px
-const FOOTER_H = 30;
 
 const CRS = L.extend({}, L.CRS.Simple, {
   transformation: new L.Transformation(1,0,-1,H)
 });
-
-// Frame fills available width; map fills frame; height = width/2
-const frameEl = document.getElementById("frame");
-const mapEl   = document.getElementById("map");
-
-// Use document body dimensions — works correctly inside iframes
-const vw = document.documentElement.clientWidth;
-const vh = document.documentElement.clientHeight;
-const maxH = vh - HEADER_H - FOOTER_H - 4;
-
-// Map fills full available width, height = width/2
-// Cap height if needed
-let mapW = vw - 2; // 1px border each side
-let mapH = Math.floor(mapW / 2);
-if (mapH > maxH) {
-  mapH = maxH;
-  mapW = mapH * 2;
-}
-
-frameEl.style.width  = mapW + "px";
-mapEl.style.width    = mapW + "px";
-mapEl.style.height   = mapH + "px";
 
 const map = L.map("map", {
   crs: CRS,
@@ -195,7 +174,9 @@ function lockMap(){
 
 window.addEventListener("load", ()=>{
   map.invalidateSize({animate:false});
-  const z = Math.log2(mapEl.clientWidth / W);
+  // Map div width is now set by CSS — read it directly
+  const mapPxW = document.getElementById("map").clientWidth;
+  const z = Math.log2(mapPxW / W);
   map.setView([H/2, W/2], z, {animate:false});
   setTimeout(lockMap, 150);
 });
