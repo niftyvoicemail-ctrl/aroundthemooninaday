@@ -54,10 +54,20 @@ html, body {
   color: #ccc;
 }
 
-#map {
+#map-wrap {
   flex: 1 1 0;
   min-height: 0;
   width: 100%;
+  background: #0a0a0a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+
+#map {
+  /* 2:1 aspect, fit within available space */
   position: relative;
   background: #000;
 }
@@ -111,6 +121,7 @@ html, body {
     <div id="map-id">ATN-GLOBAL-01</div>
   </div>
 
+  <div id="map-wrap">
   <div id="map">
     <div id="north-arrow">
       <svg width="18" height="28" viewBox="0 0 18 28" style="transform:rotate(180deg)">
@@ -120,6 +131,7 @@ html, body {
       </svg>
       <div id="north-label">N</div>
     </div>
+  </div>
   </div>
 
   <div id="footer">
@@ -168,16 +180,30 @@ function lockMap(){
 }
 
 window.addEventListener("load", ()=>{
+  // Size the map div to 2:1 aspect ratio, fitting within the wrap
+  const wrap = document.getElementById("map-wrap");
+  const mapEl = document.getElementById("map");
+  const wrapW = wrap.clientWidth;
+  const wrapH = wrap.clientHeight;
+
+  let mapW, mapH;
+  if (wrapW / 2 <= wrapH) {
+    // width-constrained
+    mapW = wrapW;
+    mapH = wrapW / 2;
+  } else {
+    // height-constrained
+    mapH = wrapH;
+    mapW = wrapH * 2;
+  }
+
+  mapEl.style.width  = mapW + "px";
+  mapEl.style.height = mapH + "px";
+
   map.invalidateSize({animate:false});
 
-  // Compute zoom so image width == container width exactly
-  // CRS.Simple: at zoom z, one map unit = 2^z px
-  // We want W * 2^z = containerWidth
-  // → z = log2(containerWidth / W)
-  const cw = map.getContainer().clientWidth;
-  const z = Math.log2(cw / W);
-
-  // Center horizontally at W/2 (0° lon), vertically at H/2 (equator)
+  // Zoom so image exactly fills the map div width
+  const z = Math.log2(mapW / W);
   map.setView([H/2, W/2], z, {animate:false});
 
   setTimeout(lockMap, 150);
