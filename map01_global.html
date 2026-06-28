@@ -170,21 +170,17 @@ function lockMap(){
 window.addEventListener("load", ()=>{
   map.invalidateSize({animate:false});
 
-  // Force fit to exact image bounds, no padding
-  map.fitBounds([[0,0],[H,W]], {
-    animate: false,
-    padding: [0,0],
-    maxZoom: 4
-  });
+  // Compute zoom so image width == container width exactly
+  // CRS.Simple: at zoom z, one map unit = 2^z px
+  // We want W * 2^z = containerWidth
+  // → z = log2(containerWidth / W)
+  const cw = map.getContainer().clientWidth;
+  const z = Math.log2(cw / W);
 
-  // After fit, re-center vertically on equator pixel (H/2)
-  // without changing zoom
-  setTimeout(()=>{
-    const z = map.getZoom();
-    const center = map.getCenter();
-    map.setView([H/2, center.lng], z, {animate:false});
-    lockMap();
-  }, 100);
+  // Center horizontally at W/2 (0° lon), vertically at H/2 (equator)
+  map.setView([H/2, W/2], z, {animate:false});
+
+  setTimeout(lockMap, 150);
 });
 
 // ── GRATICULE 30° ──
