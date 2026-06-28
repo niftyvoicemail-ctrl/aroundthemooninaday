@@ -4,7 +4,6 @@
 <title>ATN Surface Operations Cartography</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
 <style>
-
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
@@ -23,9 +22,8 @@ html, body {
   border: 1px solid #888;
   display: flex;
   flex-direction: column;
-  /* Fill width, let height follow */
   width: calc(100% - 2px);
-  max-width: calc((100vh - 90px) * 2); /* cap width so 2:1 fits vertically */
+  max-width: calc((100vh - 90px) * 2);
 }
 
 #header {
@@ -58,14 +56,11 @@ html, body {
   color: #ccc;
 }
 
-/* Map fills frame width, height locked to 2:1 via aspect-ratio */
+/* Leaflet needs explicit px dimensions — set by JS */
 #map {
-  width: 100%;
-  aspect-ratio: 2 / 1;
   position: relative;
   background: #000;
   display: block;
-  overflow: hidden;
 }
 
 .leaflet-control-zoom,
@@ -103,7 +98,6 @@ html, body {
 
 #footer-left { font-size: 9px; letter-spacing: 1px; color: #aaa; }
 #footer-right { font-size: 9px; letter-spacing: 1px; color: #666; }
-
 </style>
 </head>
 <body>
@@ -140,6 +134,24 @@ html, body {
 const W = 8192;
 const H = 4096;
 
+// ── SIZE MAP DIV BEFORE LEAFLET INIT ──
+// Frame is in DOM, header rendered — read frame width now
+const frameEl  = document.getElementById("frame");
+const mapEl    = document.getElementById("map");
+const headerEl = document.getElementById("header");
+const footerEl = document.getElementById("footer");
+
+// Force a reflow so clientWidth is accurate
+document.body.getBoundingClientRect();
+
+const frameW = frameEl.clientWidth;
+const mapW   = frameW;
+const mapH   = Math.floor(mapW / 2);
+
+mapEl.style.width  = mapW + "px";
+mapEl.style.height = mapH + "px";
+
+// ── LEAFLET INIT ──
 const CRS = L.extend({}, L.CRS.Simple, {
   transformation: new L.Transformation(1,0,-1,H)
 });
@@ -174,9 +186,7 @@ function lockMap(){
 
 window.addEventListener("load", ()=>{
   map.invalidateSize({animate:false});
-  // Map div width is now set by CSS — read it directly
-  const mapPxW = document.getElementById("map").clientWidth;
-  const z = Math.log2(mapPxW / W);
+  const z = Math.log2(mapW / W);
   map.setView([H/2, W/2], z, {animate:false});
   setTimeout(lockMap, 150);
 });
