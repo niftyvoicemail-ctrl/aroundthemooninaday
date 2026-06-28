@@ -1,248 +1,160 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>ATN Surface Operations Cartography</title>
+<title>Moon Map - Mission 07</title>
+
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
+body { margin:0; background:black; }
+#map { width:100%; height:100vh; }
 
-html, body {
-  width: 100%;
-  height: 100%;
-  background: #000;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  font-family: monospace;
+.map-label{
+  background:#111;
+  color:#fff;
+  padding:6px 8px;
+  font-size:11px;
+  border-radius:4px;
+  font-family:monospace;
+  border:1px solid #444;
 }
 
-#frame {
-  border: 1px solid #888;
-  display: flex;
-  flex-direction: column;
-  width: calc(100% - 2px);
-  max-width: calc((100vh - 90px) * 2);
-}
-
-#header {
-  flex-shrink: 0;
-  background: #0a0a0a;
-  border-bottom: 1px solid #555;
-  padding: 7px 14px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-#atn-title {
-  font-size: 17px;
-  font-weight: bold;
-  letter-spacing: 3px;
-  color: #fff;
-}
-
-#atn-subtitle {
-  font-size: 9px;
-  letter-spacing: 2px;
-  color: #aaa;
-  margin-top: 2px;
-}
-
-#map-id {
-  font-size: 12px;
-  letter-spacing: 2px;
-  color: #ccc;
-}
-
-/* Leaflet needs explicit px dimensions — set by JS */
-#map {
-  position: relative;
-  background: #000;
-  display: block;
-}
-
-.leaflet-control-zoom,
-.leaflet-control-attribution,
-.leaflet-control-container { display: none !important; }
-
-#north-arrow {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  pointer-events: none;
-}
-
-#north-label {
-  font-size: 9px;
-  color: #fff;
-  letter-spacing: 1px;
-  font-family: monospace;
-}
-
-#footer {
-  flex-shrink: 0;
-  background: #0a0a0a;
-  border-top: 1px solid #555;
-  padding: 5px 14px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-#footer-left { font-size: 9px; letter-spacing: 1px; color: #aaa; }
-#footer-right { font-size: 9px; letter-spacing: 1px; color: #666; }
+.leaflet-tooltip:before{ display:none; }
 </style>
 </head>
+
 <body>
 
-<div id="frame">
-  <div id="header">
-    <div>
-      <div id="atn-title">AURELIA TRAVERSE NETWORK</div>
-      <div id="atn-subtitle">SURFACE OPERATIONS CARTOGRAPHY</div>
-    </div>
-    <div id="map-id">ATN-GLOBAL-01</div>
-  </div>
-
-  <div id="map">
-    <div id="north-arrow">
-      <svg width="18" height="28" viewBox="0 0 18 28">
-        <polygon points="9,2 4,16 9,13 14,16" fill="#fff"/>
-        <polygon points="9,28 4,12 9,15 14,12" fill="#555"/>
-        <line x1="9" y1="2" x2="9" y2="28" stroke="#fff" stroke-width="0.5"/>
-      </svg>
-      <div id="north-label">N</div>
-    </div>
-  </div>
-
-  <div id="footer">
-    <div id="footer-left">HELIOS DYNAMICS · FULL TRAVERSE NETWORK</div>
-    <div id="footer-right">LUNAR RECONNAISSANCE ORBITER · NASA/GSFC/ASU</div>
-  </div>
-</div>
+<div id="map"></div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
 <script>
 
 const W = 8192;
 const H = 4096;
 
-// ── SIZE MAP DIV BEFORE LEAFLET INIT ──
-// Frame is in DOM, header rendered — read frame width now
-const frameEl  = document.getElementById("frame");
-const mapEl    = document.getElementById("map");
-const headerEl = document.getElementById("header");
-const footerEl = document.getElementById("footer");
-
-// Force a reflow so clientWidth is accurate
-document.body.getBoundingClientRect();
-
-const frameW = frameEl.clientWidth;
-const mapW   = frameW;
-const mapH   = Math.floor(mapW / 2);
-
-mapEl.style.width  = mapW + "px";
-mapEl.style.height = mapH + "px";
-
-// ── LEAFLET INIT ──
+// ✅ Stable CRS
 const CRS = L.extend({}, L.CRS.Simple, {
-  transformation: new L.Transformation(1,0,-1,H)
+  transformation: new L.Transformation(1, 0, -1, H)
 });
+
+// ✅ FORCE stable zoom level
+const FIXED_ZOOM = 0;
 
 const map = L.map("map", {
   crs: CRS,
-  zoomControl: false,
-  attributionControl: false,
-  minZoom: -8,
-  maxZoom: 4
+  minZoom: FIXED_ZOOM,
+  maxZoom: FIXED_ZOOM
 });
 
-L.imageOverlay("moon.jpg", [[0,0],[H,W]]).addTo(map);
+// ✅ Center map consistently
+map.setView([H/2, W/2], FIXED_ZOOM);
 
+// GEO converter
 function geo(lat, lon){
-  const x = (lon+180)/360*W;
-  const y = (90-lat)/180*H;
-  return L.latLng(H-y, x);
+  const x = (lon + 180) / 360 * W;
+  const y = (90 - lat) / 180 * H;
+  return L.latLng(H - y, x);
 }
 
-function lockMap(){
-  const z = map.getZoom();
-  map.setMinZoom(z);
-  map.setMaxZoom(z);
-  map.dragging.disable();
-  map.touchZoom.disable();
-  map.doubleClickZoom.disable();
-  map.scrollWheelZoom.disable();
-  map.boxZoom.disable();
-  map.keyboard.disable();
-}
+// ✅ STABLE TILE LAYER (no zoom scaling nonsense)
+const TL = L.GridLayer.extend({
+  createTile(coords){
+    const img = document.createElement("img");
 
-window.addEventListener("load", ()=>{
-  map.invalidateSize({animate:false});
-  const z = Math.log2(mapW / W);
-  map.setView([H/2, W/2], z, {animate:false});
-  setTimeout(lockMap, 150);
+    const px = coords.x * 256;
+    const py = coords.y * 256;
+
+    img.src = `tiles/tile_${px}_${py}.png`;
+
+    img.style.width = "256px";
+    img.style.height = "256px";
+
+    // Debug fallback (optional)
+    img.onerror = () => {
+      img.style.background = "black";
+    };
+
+    return img;
+  }
 });
 
-// ── GRATICULE 30° ──
-const GRAT = { color:"#ffffff", weight:0.8, opacity:0.4, interactive:false };
+map.addLayer(new TL({ tileSize: 256 }));
 
-for(let lat = -60; lat <= 60; lat += 30){
-  if(lat === 0) continue;
-  let pts = [];
-  for(let lon = -180; lon <= 180; lon += 2) pts.push(geo(lat, lon));
-  L.polyline(pts, GRAT).addTo(map);
+// ✅ LANDER ICON
+function landerIcon(){
+  return L.divIcon({
+    html: `
+    <svg width="26" height="26" viewBox="0 0 32 32">
+      <polygon points="16,6 26,18 6,18" fill="#ff4444"/>
+      <rect x="12" y="18" width="8" height="5" fill="#ff4444"/>
+      <line x1="10" y1="18" x2="6" y2="26" stroke="#ff4444" stroke-width="2"/>
+      <line x1="22" y1="18" x2="26" y2="26" stroke="#ff4444" stroke-width="2"/>
+    </svg>`,
+    iconSize:[26,26],
+    className:""
+  });
 }
-for(let lon = -180; lon <= 180; lon += 30){
-  let pts = [];
-  for(let lat = -89; lat <= 89; lat += 2) pts.push(geo(lat, lon));
-  L.polyline(pts, GRAT).addTo(map);
+
+// ✅ ROVER ICON
+function roverIcon(){
+  return L.divIcon({
+    html: `
+    <svg width="28" height="28" viewBox="0 0 32 32">
+      <rect x="6" y="12" width="20" height="6" fill="#ff4444"/>
+      <line x1="16" y1="12" x2="16" y2="6" stroke="#ff4444" stroke-width="2"/>
+      <circle cx="16" cy="5" r="2" fill="#ff4444"/>
+      <circle cx="10" cy="22" r="3" fill="#ff4444"/>
+      <circle cx="22" cy="22" r="3" fill="#ff4444"/>
+    </svg>`,
+    iconSize:[28,28],
+    className:""
+  });
 }
 
-// ── EQUATOR ──
-let eq = [];
-for(let lon = -180; lon <= 180; lon += 2) eq.push(geo(0, lon));
-L.polyline(eq, { color:"#00ffff", weight:2, opacity:0.7, interactive:false }).addTo(map);
+// LOAD ROUTE
+fetch("data/rout3leg01.kml")
+.then(r => r.text())
+.then(text => {
 
-// ── ROUTES ──
-const routes = [
-  "rout3leg01.kml","rout3leg02.kml","rout3leg03.kml",
-  "rout3leg04.kml","rout3leg05.kml","rout3leg06.kml",
-  "rout3leg07.kml","rout3leg08.kml","rout3leg09.kml",
-  "rout3leg10.kml","rout3leg11.kml"
-];
+  const xml = new DOMParser().parseFromString(text,"text/xml");
+  let pts = [];
 
-routes.forEach(file=>{
-  fetch("data/"+file)
-  .then(r=>r.text())
-  .then(text=>{
-    const xml = new DOMParser().parseFromString(text,"text/xml");
-    xml.querySelectorAll("coordinates").forEach(node=>{
-      let lastLon = null, segment = [], segments = [];
-      node.textContent.trim().split(/\s+/).forEach(p=>{
-        let [lon,lat] = p.split(",");
-        lon = parseFloat(lon); lat = parseFloat(lat);
-        if(isNaN(lat)||isNaN(lon)) return;
-        if(lastLon !== null && Math.abs(lon-lastLon) > 180){
-          if(segment.length > 1) segments.push(segment);
-          segment = [];
-        }
-        lastLon = lon;
-        segment.push(geo(lat,lon));
-      });
-      if(segment.length > 1) segments.push(segment);
-      segments.forEach(s=>{
-        L.polyline(s,{color:"#ff4444",weight:2,interactive:false}).addTo(map);
-      });
+  xml.querySelectorAll("coordinates").forEach(n => {
+    n.textContent.trim().split(/\s+/).forEach(p => {
+      let [lon, lat] = p.split(",");
+      pts.push(geo(parseFloat(lat), parseFloat(lon)));
     });
   });
+
+  let line = L.polyline(pts, {
+    color:"#ff4444",
+    weight:3
+  }).addTo(map);
+
+  map.fitBounds(line.getBounds().pad(0.3));
+
+  // ✅ LOCK INTERACTION ONLY (NOT ZOOM)
+  map.dragging.disable();
+
+  let start = pts[0];
+  let end = pts[pts.length-1];
+
+  // START
+  L.marker(start,{icon:landerIcon()}).addTo(map)
+  .bindTooltip(
+    "start Russell Crater<br>Distance: 720 km<br>UTC: 07/22/2032 12:00<br>MLLST: 06:48 RLLST: 06:48",
+    {permanent:true,offset:[120,-40],className:"map-label"}
+  );
+
+  // END
+  L.marker(end,{icon:roverIcon()}).addTo(map)
+  .bindTooltip(
+    "Helberg Crater<br>Speed: 8 km/h<br>UTC: 07/26/2032, 06:00<br>MLLST: 09:49 RLLST 07:00",
+    {permanent:true,offset:[-140,-40],className:"map-label"}
+  );
+
 });
 
 </script>
