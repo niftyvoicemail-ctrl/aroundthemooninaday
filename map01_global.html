@@ -142,29 +142,26 @@ const CRS = L.extend({}, L.CRS.Simple, {
   transformation: new L.Transformation(1,0,-1,H)
 });
 
-// Size map before Leaflet init
-function computeMapSize(){
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  const availH = vh - HEADER_H - FOOTER_H - 2; // -2 for borders
-  const availW = vw - 2;
+// Frame fills available width; map fills frame; height = width/2
+const frameEl = document.getElementById("frame");
+const mapEl   = document.getElementById("map");
 
-  let mapW, mapH;
-  // 2:1 aspect — fit within available space, use 92% of width max
-  if (availW / 2 <= availH) {
-    mapW = Math.floor(availW * 0.97);
-    mapH = Math.floor(mapW / 2);
-  } else {
-    mapH = Math.floor(availH * 0.97);
-    mapW = Math.floor(mapH * 2);
-  }
-  return { mapW, mapH };
+const vw = window.innerWidth  - 4;  // 2px border each side
+const vh = window.innerHeight - 4;
+const maxH = vh - HEADER_H - FOOTER_H;
+
+// Width-first: map fills frame width
+// But cap so height doesn't exceed available vertical space
+let mapW = vw;
+let mapH = Math.floor(mapW / 2);
+if (mapH > maxH) {
+  mapH = maxH;
+  mapW = mapH * 2;
 }
 
-const { mapW, mapH } = computeMapSize();
-const mapEl = document.getElementById("map");
-mapEl.style.width  = mapW + "px";
-mapEl.style.height = mapH + "px";
+frameEl.style.width  = mapW + "px";
+mapEl.style.width    = mapW + "px";
+mapEl.style.height   = mapH + "px";
 
 const map = L.map("map", {
   crs: CRS,
@@ -196,7 +193,7 @@ function lockMap(){
 
 window.addEventListener("load", ()=>{
   map.invalidateSize({animate:false});
-  const z = Math.log2(mapW / W);
+  const z = Math.log2(mapEl.clientWidth / W);
   map.setView([H/2, W/2], z, {animate:false});
   setTimeout(lockMap, 150);
 });
