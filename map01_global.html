@@ -155,21 +155,6 @@ function geo(lat, lon){
   return L.latLng(H-y, x);
 }
 
-function fitFill(){
-  // Compute zoom that makes image fill the container with no padding
-  const container = map.getContainer();
-  const cw = container.clientWidth;
-  const ch = container.clientHeight;
-  // image aspect W:H, container aspect cw:ch
-  // fitBounds pads; instead compute zoom directly
-  const scaleX = cw / W;
-  const scaleY = ch / H;
-  const scale = Math.max(scaleX, scaleY); // FILL, not fit
-  const z = map.getZoom() + Math.log2(scale * (W / cw));
-  // Simpler: just use fitBounds with no padding then nudge
-  map.fitBounds([[0,0],[H,W]], {animate:false, padding:[0,0]});
-}
-
 function lockMap(){
   const z = map.getZoom();
   map.setMinZoom(z);
@@ -185,21 +170,21 @@ function lockMap(){
 window.addEventListener("load", ()=>{
   map.invalidateSize({animate:false});
 
-  // Fit the full image width edge to edge
-  // In CRS.Simple at zoom z, a map unit = 2^z CSS pixels
-  // Image is W map units wide, container is cw px wide
-  // So 2^z = cw/W → z = log2(cw/W)
-  const cw = map.getContainer().clientWidth;
-  const ch = map.getContainer().clientHeight;
-  const fillZoom = Math.log2(cw / W);
+  // Force fit to exact image bounds, no padding
+  map.fitBounds([[0,0],[H,W]], {
+    animate: false,
+    padding: [0,0],
+    maxZoom: 4
+  });
 
-  // Center: x = W/2 (middle longitude), y = H/2 (equator in pixel space)
-  // CRS has y-axis flipped: latLng(H-y, x), so equator pixel y = H/2
-  // → L.latLng(H - H/2, W/2) = L.latLng(H/2, W/2)
-  const center = L.latLng(H/2, W/2);
-  map.setView(center, fillZoom, {animate:false});
-
-  setTimeout(lockMap, 150);
+  // After fit, re-center vertically on equator pixel (H/2)
+  // without changing zoom
+  setTimeout(()=>{
+    const z = map.getZoom();
+    const center = map.getCenter();
+    map.setView([H/2, center.lng], z, {animate:false});
+    lockMap();
+  }, 100);
 });
 
 // ── GRATICULE 30° ──
